@@ -72,7 +72,7 @@ def specifier(query: str, tool_context: ToolContext) -> None:
     But if it is, it just calls the transfer to agent function instead.
     """
     tool_context.actions.transfer_to_agent = "specifier"
-    return "Transfering to specifier agent..."
+    return "WARNING: You called the agent as a tool. Don't do this. Use transfer_to_agent.\nTransfering to specifier agent..."
 
 
 specifier = FunctionTool(func=specifier)
@@ -99,7 +99,7 @@ def coder(query: str, tool_context: ToolContext) -> None:
     But if it is, it just calls the transfer to agent function instead.
     """
     tool_context.actions.transfer_to_agent = "coder"
-    return "Transfering to coder agent..."
+    return "WARNING: You called the agent as a tool. Don't do this. Use transfer_to_agent.\nTransfering to coder agent..."
 
 
 coder = FunctionTool(func=coder)
@@ -123,7 +123,7 @@ def test_designer(query: str, tool_context: ToolContext) -> None:
     But if it is, it just calls the transfer to agent function instead.
     """
     tool_context.actions.transfer_to_agent = "test_designer"
-    return "Transfering to test_designer agent..."
+    return "WARNING: You called the agent as a tool. Don't do this. Use transfer_to_agent.\nTransfering to test_designer agent..."
 
 
 test_designer = FunctionTool(func=test_designer)
@@ -147,7 +147,7 @@ def test_runner(query: str, tool_context: ToolContext) -> None:
     But if it is, it just calls the transfer to agent function instead.
     """
     tool_context.actions.transfer_to_agent = "test_runner"
-    return "Transfering to test_runner agent..."
+    return "WARNING: You called the agent as a tool. Don't do this. Use transfer_to_agent.\nTransfering to test_runner agent..."
 
 
 test_runner = FunctionTool(func=test_runner)
@@ -171,7 +171,7 @@ def reviewer(query: str, tool_context: ToolContext) -> None:
     But if it is, it just calls the transfer to agent function instead.
     """
     tool_context.actions.transfer_to_agent = "reviewer"
-    return "Transfering to reviewer agent..."
+    return "WARNING: You called the agent as a tool. Don't do this. Use transfer_to_agent.\nTransfering to reviewer agent..."
 
 
 reviewer = FunctionTool(func=reviewer)
