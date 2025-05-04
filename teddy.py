@@ -43,6 +43,8 @@ USER_ID = "dan"
 SESSION_ID = "1"
 
 os.environ["OPENAI_API_KEY"] = get_api_key(0)
+os.mkdir("workdir", exist_ok=True)
+os.chdir('workdir')
 
 logging.getLogger("LiteLLM").setLevel(logging.WARNING)
 logging.basicConfig(
@@ -75,7 +77,7 @@ _planner = Agent(
     "Occasionally, the system gets stuck, and the agents keep passing the baton, telling you"
     " to proceed, without making progress. BREAK THESE LOOPS by issuing a new task.\n "
     "Lastly, only when the user's task is completely fulfilled, RUN PYTEST one more time, and"
-    " if it passes, issue the termination token 'TASK_COMPLETE'. ",
+    " if it passes, issue the termination token 'TASK_COMPLETE'. Don't go on forever. Stick only to the requirements.",
     disallow_transfer_to_peers=True,
     disallow_transfer_to_parent=True,
     tools=[run_pytest],
@@ -140,32 +142,35 @@ _reviewer = Agent(
     "does indeed look good. Provide feedback. Focus on ensuring that the code is modular, testable, and adheres "
     "to best practices. Do not write or execute code yourself.",
     instruction="Be brief. You are a reviewer agent responsible for verifying that the tests did indeed pass and "
-    "the code does indeed look good. Provide feedback. You are part of a larger cycle of agents "
-    "[planner, specifier, coder, tester, reviewer]. Your job is to review the code and test results "
-    "to ensure they"" meet the required standards. Make sure a unit test was written for the current "
+    "the code does indeed look good. You are part of a larger cycle of agents "
+    "[planner, specifier, coder, tester, reviewer]. The tester was supposed to have just written the tests and ran pytest. If they didn't, call them out." \
+    " If they did, then read the code and make sure it meets the required standards. Make sure a unit test was written for the current "
     "code and that it passed. If not, say so and insist that the planner makes the next cycle about "
     "creating a test for the last code. Suggest improvements if necessary and sign off on the code "
     "when it is ready to be committed to the codebase. Summarize how each step of the test-driven "
     "development process was successful. Focus on ensuring that the code is modular, testable, and "
-    "adheres to best practices. Do not write or execute code yourself.",
+    "adheres to best practices. Do not write or execute code yourself. You need to report what unit of "
+    "code is being written, which unit tests cover it, and that all unit tests pass.",
     tools=unix_tools,
     disallow_transfer_to_peers=True,
     disallow_transfer_to_parent=True,
 )
 
-_loopbreaker = Agent(
+_aligner = Agent(
     model=LiteLlm(model="openai/gpt-4.1-nano"),
-    name="loopbreaker",
-    description="You are a loopbreaker agent responsible for breaking the loop of agents that "
+    name="aligner",
+    description="You are an aligner agent responsible for breaking the loop of agents that "
     "are stuck in a cycle. You are part of a larger cycle of agents [planner, specifier, coder, tester, reviewer]. "
     "Your job is to identify when the agents are stuck and issue a new task to break the loop.",
-    instruction="Be brief. You are a loopbreaker agent responsible for breaking the loop of agents "
+    instruction="Be brief. You are an aligner agent responsible for breaking the loop of agents "
     "that are stuck in a cycle. Your job is to identify when the agents are stuck and let everyone know really "
     "loudly. If you detect that the agents are not making progress, passing the batton, saying they will "
     "do thing but not, then say in all caps, 'GUYS, YOU ARE STUCK IN A LOOP. PLANNER, ISSUE A NEW TASK TO A SPECIFIC AGENT.' "
     "Do not write or execute code yourself; focus solely on breaking the loop. If there is no loop, "
     "say `Continue` and nothing else. Don't let the agents ask eachother to run specific files or "
-    "commands repeatedly. If the coder is speaking but not coding, say 'Coder, stop talking and code.' ",
+    "commands repeatedly, that's a lop. If they say 'please let me know' a lot, then that's a loop. "
+    "If the coder is speaking but not coding, say 'Coder, stop talking and code.' "
+    "If there's a lot of talking and not a lot of tool use, say 'Guys, you are stuck in a loop. Planner, issue a new task to a specific agent.' ",
     disallow_transfer_to_peers=True,
     disallow_transfer_to_parent=True,
 )
@@ -174,7 +179,7 @@ system = LoopAgent(
     name="system",
     description="Loops Teddy 20 times, and then stops.",
     max_iterations=20,
-    sub_agents=[_planner, _specifier, _coder, _tester, _reviewer, _loopbreaker],
+    sub_agents=[_planner, _specifier, _coder, _tester, _reviewer, _aligner],
 )
 
 
