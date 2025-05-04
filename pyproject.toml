@@ -1,0 +1,13 @@
+[project]
+name = "teddy"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "google-adk>=0.4.0",
+    "litellm>=1.65, <1.67",
+    "pip>=25.1.1",
+    "pytest>=8.3.5",
+    "ruff>=0.11.8",
+]

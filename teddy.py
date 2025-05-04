@@ -1,0 +1,208 @@
+from google.adk.agents import Agent, LoopAgent
+from google.adk.models.lite_llm import LiteLlm
+from google.adk.runners import Runner
+from google.adk.sessions import InMemorySessionService
+from google.genai import types
+from tools import (
+    read_file,
+    write_file,
+    cd,
+    ls,
+    pwd,
+    mkdir,
+    touch,
+    run_python_file,
+    run_tests,
+)
+import asyncio
+from pprint import pprint as print
+
+
+from encrypt_api import get_api_key
+import os
+
+APP_NAME = "teddy"
+USER_ID = "dan"
+SESSION_ID = "1"
+
+os.environ["OPENAI_API_KEY"] = get_api_key(0)
+
+unix_tools = [cd, ls, pwd, mkdir, touch, read_file, write_file]
+directory_navigator = Agent(
+    model=LiteLlm(model="openai/gpt-4.1-nano"),
+    name="directory_navigator",
+    description="You are a directory navigator. You manage and answer questions about the directory structure. "
+    "You can create, move, and delete files and directories. You can also read the contents of files.",
+    tools=unix_tools,
+    instruction="You are a directory navigator. You manage and answer questions about the directory structure. "
+    "You can create, move, and delete files and directories. You can also read the contents of files.",
+    disallow_transfer_to_peers=False,
+    disallow_transfer_to_parent=True,
+)
+
+
+specifier = Agent(
+    model=LiteLlm(model="openai/gpt-4.1-nano"),
+    name="specifier",
+    description="You are a specifier. You take high level implementation steps and break them down into more concrete implementation requirements for the coder.",
+    instruction="You are a specifier. You take high level implementation steps and break them down into more concrete implementation requirements for the coder. The coder needs to know which files he is modifying and what exactly the implementation requiremts are. Your job is to bridge the high level instructions into concrete code requirements. But, do not write any code yourself. Just say your specification and leave that to the coder.",
+    tools=[cd, ls, pwd, read_file],
+    disallow_transfer_to_peers=False,
+    disallow_transfer_to_parent=True,
+)
+
+
+coder = Agent(
+    model=LiteLlm(model="openai/gpt-4.1-nano"),
+    name="coder",
+    description="Writes and executes Python code to implement concrete implementation requirements in a specific file.",
+    instruction="""You are a code agent.
+    You will be given a concrete implementation requirement and a file in which to write it,
+    Your job is to generate code to implement those requirements in Python.
+    You have the following tools at your disposal:
+    - read_file(file): a tool that allows you to read the contents of a file.
+    - write_file(file, content): a tool that allows you to write content to a file.
+    You will use the first tool to read the relevent file mentioned in the requirement,
+    and the second tool to write the code to that file. Implement the requirements and write the code to the file, by telling each agent what needs to be done.
+    """,
+    tools=unix_tools,
+    disallow_transfer_to_peers=False,
+    disallow_transfer_to_parent=True,
+)
+
+
+test_designer = Agent(
+    model=LiteLlm(model="openai/gpt-4.1-nano"),
+    name="test_designer",
+    description="You are a test designer. You take a piece of code and design a list of tests that verify its functionality. "
+    "You leave the implementation details to the specifier and coder. Ensure these tests get written to a file by coder.",
+    instruction="You are a test designer. You take a piece of code and design a list of tests that verify its functionality. "
+    "You leave the implementation details to the specifier and coder.",
+    tools=unix_tools,
+    disallow_transfer_to_peers=False,
+    disallow_transfer_to_parent=True,
+)
+
+
+test_runner = Agent(
+    model=LiteLlm(model="openai/gpt-4.1-nano"),
+    name="test_runner",
+    description="You are a test runner. You run the tests and report the results and errors. "
+    "You track the growing list of tests and run all previous unit tests.",
+    instruction="You are a test runner. You run the tests and report the results and errors. "
+    "You track the growing list of tests and run all previous unit tests.",
+    tools=[run_python_file, run_tests] + unix_tools,
+    disallow_transfer_to_peers=False,
+    disallow_transfer_to_parent=True,
+)
+
+
+reviewer = Agent(
+    model=LiteLlm(model="openai/gpt-4.1-nano"),
+    name="reviewer",
+    description="You are a reviewer. You review the code and suggest improvements if needed. "
+    "You sign off on a piece of code and commit it to the codebase.",
+    instruction="You are a reviewer. You review the code and suggest improvements if needed. "
+    "You sign off on a piece of code and commit it to the codebase.",
+    tools=unix_tools,
+    disallow_transfer_to_peers=False,
+    disallow_transfer_to_parent=True,
+)
+
+
+teddy = Agent(
+    model=LiteLlm(model="openai/gpt-4.1-nano"),
+    name="Teddy",
+    description="You are Teddy, a programming assistant. You follow an iterative code, test, fix, review, repeat process to implement requests. ",
+    instruction="You are a the orchestrator of a programming team that follows an iterative code, test, fix, review loop to implement code. "
+    "In this loop, we implement one feature at a time. Every small function of code you write, you must stop,"
+    "drop in some driver code and test whatever you are writing. You should write unit tests that "
+    "verify its functionality immediately, and append them to a list of growing unit tests that runs after each change. "
+    "This list of tests should be kept in a pytest structure in a directory called tests, ensure that gets done.\n"
+    "Given a user task, it is your job to state your plan out loud and delegate the work to the subagents by means of transfer_to_agent.\n"
+    "Follow the loop of: plan, transfer to specifier to specify, to coder to code, to test_designer to design tests, back to specifier to specify "
+    "the tests, to the coder to wrwite the tests, to the test_runner to run the tests, to the reviewer to review, and repeat.\n"
+    "Whenever you regain control, recount where we are in the process, and what the next step is. Don't skip any steps. \n"
+    "When the task has been completed, say the termination token 'TASK_COMPLETE'."
+    "And remember, transfer to agents is always done via transfer_to_agent, not by calling them directly. ",
+    sub_agents=[
+        directory_navigator,
+        specifier,
+        coder,
+        test_designer,
+        test_runner,
+        reviewer,
+    ],
+)
+
+system = LoopAgent(
+    name="system",
+    description="Loops Teddy 10 times, and then stops.",
+    max_iterations=10,
+    sub_agents=[teddy],
+)
+
+
+session_service = InMemorySessionService()
+session = session_service.create_session(
+    app_name=APP_NAME, user_id=USER_ID, session_id=SESSION_ID
+)
+runner = Runner(agent=system, app_name=APP_NAME, session_service=session_service)
+
+
+# Agent Interaction (Async)
+async def call_agent_async(query):
+    content = types.Content(role="user", parts=[types.Part(text=query)])
+    print(f"\n--- Running Query: {query} ---")
+    final_response_text = "No final text response captured."
+    try:
+        # Use run_async
+        async for event in runner.run_async(
+            user_id=USER_ID, session_id=SESSION_ID, new_message=content
+        ):
+            has_specific_part = False
+            if event.content and event.content.parts:
+                for part in event.content.parts:  # Iterate through all parts
+                    if part.text and not part.text.isspace():
+                        if "TASK_COMPLETE" in part.text:
+                            print(
+                                f"[{event.author}]  Debug: Task Complete: {part.text.strip()}"
+                            )
+                            return
+                        print(f"[{event.author}]{part.text.strip()}")
+                    elif part.function_response:
+                        print(
+                            f"[{event.author}]Function response: {part.function_response.name, part.function_response.response}"
+                        )
+                    elif part.function_call:
+                        print(
+                            f"[{event.author}]Function call: {part.function_call.name, part.function_call.args}"
+                        )
+            if not has_specific_part and event.is_final_response():
+                if (
+                    event.content
+                    and event.content.parts
+                    and event.content.parts[0].text
+                ):
+                    final_response_text = event.content.parts[0].text.strip()
+                    print(
+                        f"[{event.author}]==> Final Agent Response: {final_response_text}"
+                    )
+                else:
+                    print(
+                        f"[{event.author}]==> Final Agent Response: [No text content in final event]"
+                    )
+
+    except Exception as e:
+        print(f"ERROR during agent run: {e}")
+    print("-" * 30)
+
+
+# Main async function to run the examples
+async def main():
+    await call_agent_async(
+        "Write a program to calculate the value of (5 + 2) * 2 the quantity factorial using only for loops and addition. Make your code very modular, and have 100% test coverage. Feel free to use more common methods to generate test cases, but the codebase must not use these methods besides for loops and addition. "
+    )
+
+
+asyncio.run(main())
