@@ -1,0 +1,5 @@
+task = "build a program that allows me to track my spending by exposing an interface "
+"where i can submit new transactions via the command line. These transactions are "
+"captured and added to the list of transactions upon which statistics will be calculated "
+"and a report will be generated. In testing, generate dummy data and ensure each step of "
+"the code works. For persistance, save the transactions in a csv on the hard drive."

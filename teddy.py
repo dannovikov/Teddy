@@ -21,6 +21,7 @@ from tools import (
     pip_install,
 )
 
+
 # Setup
 
 unix_tools = [
@@ -43,7 +44,8 @@ USER_ID = "dan"
 SESSION_ID = "1"
 
 os.environ["OPENAI_API_KEY"] = get_api_key(0)
-os.mkdir("workdir", exist_ok=True)
+if not os.path.exists("workdir"):
+    os.mkdir("workdir")
 os.chdir('workdir')
 
 logging.getLogger("LiteLLM").setLevel(logging.WARNING)
@@ -54,6 +56,7 @@ logging.basicConfig(
 
 
 logging.info("Starting Teddy...")
+
 
 # Agents
 
@@ -80,7 +83,7 @@ _planner = Agent(
     " if it passes, issue the termination token 'TASK_COMPLETE'. Don't go on forever. Stick only to the requirements.",
     disallow_transfer_to_peers=True,
     disallow_transfer_to_parent=True,
-    tools=[run_pytest],
+    tools=unix_tools,
 )
 
 _specifier = Agent(
@@ -97,6 +100,7 @@ _specifier = Agent(
     "Your job is to take high-level implementation steps and break them down into detailed, "
     "actionable requirements for a single unit of code for the coder. Ensure that the requirements "
     "are modular and testable, and that you are specifying only one unit of code at a time. ",
+    tools=unix_tools,
     disallow_transfer_to_peers=True,
     disallow_transfer_to_parent=True,
 )
@@ -168,9 +172,12 @@ _aligner = Agent(
     "do thing but not, then say in all caps, 'GUYS, YOU ARE STUCK IN A LOOP. PLANNER, ISSUE A NEW TASK TO A SPECIFIC AGENT.' "
     "Do not write or execute code yourself; focus solely on breaking the loop. If there is no loop, "
     "say `Continue` and nothing else. Don't let the agents ask eachother to run specific files or "
-    "commands repeatedly, that's a lop. If they say 'please let me know' a lot, then that's a loop. "
-    "If the coder is speaking but not coding, say 'Coder, stop talking and code.' "
-    "If there's a lot of talking and not a lot of tool use, say 'Guys, you are stuck in a loop. Planner, issue a new task to a specific agent.' ",
+    "commands repeatedly, that's a loop. If they say 'please let me know' a lot, then that's a loop. "
+    "If the coder is speaking but not coding, say 'Coder, stop talking and code.'\n"
+    "If there's a lot of talking and not a lot of tool use, say 'Guys, you are stuck in a loop. Planner, issue a new task to a specific agent.'\n"
+    "If any of the agents expect the user to do something or run something, say 'Guys, the user is not available to do anything. You have the tools to do it yourself.'\n"
+    "If any of the agents are saying 'I will do this' or 'Once this happens, I'll...' but not actually doing it, say 'Guys, stop passing it off and actually do the thing.'\n"
+    "If the agents are asking any question at all, say 'Guys, stop asking questions and just do the thing.'\n",
     disallow_transfer_to_peers=True,
     disallow_transfer_to_parent=True,
 )
@@ -184,15 +191,12 @@ system = LoopAgent(
 
 
 async def task():
-    task = "build a program that allows me to track my spending by exposing an interface "
-    "where i can submit new transactions via the command line. These transactions are "
-    "captured and added to the list of transactions upon which statistics will be calculated "
-    "and a report will be generated. In testing, generate dummy data and ensure each step of "
-    "the code works. For persistance, save the transactions in a csv on the hard drive."
 
-    task += " Make your code very modular, and have 100% test coverage writing python pytest "
-    "tests as test_* in the root directory such that the pytest command will pick them up. "
-    "Code should never contain input statements, and should be able to run without any user input. "
+    task = "Write a program that fetches accepts a stock ticker and returns a formatted text "
+    "report of import metrics for investing in the stock, including volatility, volume, price, "
+    "moving averages, rsi, short float, etc. It doesn't need a gui. Just a python program is fine."
+
+    task += " Make your code very modular, and pytest testable. Code should never contain input statements, and should always run without any user input. "
     await call_agent_async(task, system, APP_NAME, USER_ID, SESSION_ID)
 
 
