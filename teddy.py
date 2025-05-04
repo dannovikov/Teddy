@@ -2,6 +2,7 @@ from google.adk.agents import Agent, LoopAgent
 from google.adk.models.lite_llm import LiteLlm
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
+from google.adk.tools import FunctionTool, ToolContext
 from google.genai import types
 from tools import (
     read_file,
@@ -28,34 +29,51 @@ SESSION_ID = "1"
 os.environ["OPENAI_API_KEY"] = get_api_key(0)
 
 unix_tools = [cd, ls, pwd, mkdir, touch, read_file, write_file]
-directory_navigator = Agent(
+_directory_navigator = Agent(
     model=LiteLlm(model="openai/gpt-4.1-nano"),
     name="directory_navigator",
-    description="You are a directory navigator. You manage and answer questions about the directory structure. "
+    description="Can be transfered to using transfer_to_agent. You are a directory navigator agent. You manage and answer questions about the directory structure. "
     "You can create, move, and delete files and directories. You can also read the contents of files.",
     tools=unix_tools,
-    instruction="You are a directory navigator. You manage and answer questions about the directory structure. "
+    instruction="You are a directory navigator agent. You manage and answer questions about the directory structure. "
     "You can create, move, and delete files and directories. You can also read the contents of files.",
-    disallow_transfer_to_peers=False,
+    disallow_transfer_to_peers=True,
     disallow_transfer_to_parent=True,
 )
+def fn_directory_navigator(query:str, tool_context:ToolContext) -> None:
+    """
+    Should not be called. tranfer_to_agent should be used instead. 
+    But if it is, it just calls the transfer to agent function instead.
+    """
+    tool_context.actions.transfer_to_agent = 'directory_navigator'
+    return "Transfering to directory_navigator agent..."
+directory_navigator = FunctionTool(func=fn_directory_navigator)
 
 
-specifier = Agent(
+
+
+_specifier = Agent(
     model=LiteLlm(model="openai/gpt-4.1-nano"),
     name="specifier",
-    description="You are a specifier. You take high level implementation steps and break them down into more concrete implementation requirements for the coder.",
-    instruction="You are a specifier. You take high level implementation steps and break them down into more concrete implementation requirements for the coder. The coder needs to know which files he is modifying and what exactly the implementation requiremts are. Your job is to bridge the high level instructions into concrete code requirements. But, do not write any code yourself. Just say your specification and leave that to the coder.",
+    description="Can be transfered to using transfer_to_agent. You are a specifier agent. You take high level implementation steps and break them down into more concrete implementation requirements for the coder.",
+    instruction="You are a specifier agent. You take high level implementation steps and break them down into more concrete implementation requirements for the coder. The coder needs to know which files he is modifying and what exactly the implementation requiremts are. Your job is to bridge the high level instructions into concrete code requirements. But, do not write any code yourself. Just say your specification and leave that to the coder.",
     tools=[cd, ls, pwd, read_file],
-    disallow_transfer_to_peers=False,
+    disallow_transfer_to_peers=True,
     disallow_transfer_to_parent=True,
 )
+def fn_specifier(query:str, tool_context:ToolContext) -> None:
+    """
+    Should not be called. tranfer_to_agent should be used instead. 
+    But if it is, it just calls the transfer to agent function instead.
+    """
+    tool_context.actions.transfer_to_agent = 'specifier'
+    return "Transfering to specifier agent..."
+specifier = FunctionTool(func=fn_specifier)
 
-
-coder = Agent(
+_coder = Agent(
     model=LiteLlm(model="openai/gpt-4.1-nano"),
     name="coder",
-    description="Writes and executes Python code to implement concrete implementation requirements in a specific file.",
+    description="Can be transfered to using transfer_to_agent. An agent that writes and executes Python code to implement concrete implementation requirements in a specific file.",
     instruction="""You are a code agent.
     You will be given a concrete implementation requirement and a file in which to write it,
     Your job is to generate code to implement those requirements in Python.
@@ -66,73 +84,112 @@ coder = Agent(
     and the second tool to write the code to that file. Implement the requirements and write the code to the file, by telling each agent what needs to be done.
     """,
     tools=unix_tools,
-    disallow_transfer_to_peers=False,
+    disallow_transfer_to_peers=True,
     disallow_transfer_to_parent=True,
 )
+def fn_coder(query:str, tool_context:ToolContext) -> None:
+    """
+    Should not be called. tranfer_to_agent should be used instead. 
+    But if it is, it just calls the transfer to agent function instead.
+    """
+    tool_context.actions.transfer_to_agent = 'coder'
+    return "Transfering to coder agent..."
+coder = FunctionTool(func=fn_coder)
 
-
-test_designer = Agent(
+_test_designer = Agent(
     model=LiteLlm(model="openai/gpt-4.1-nano"),
     name="test_designer",
-    description="You are a test designer. You take a piece of code and design a list of tests that verify its functionality. "
+    description="Can be transfered to using transfer_to_agent. You are a test designer agent. You take a piece of code and design a list of tests that verify its functionality. "
     "You leave the implementation details to the specifier and coder. Ensure these tests get written to a file by coder.",
     instruction="You are a test designer. You take a piece of code and design a list of tests that verify its functionality. "
     "You leave the implementation details to the specifier and coder.",
     tools=unix_tools,
-    disallow_transfer_to_peers=False,
+    disallow_transfer_to_peers=True,
     disallow_transfer_to_parent=True,
 )
+def fn_test_designer(query:str, tool_context:ToolContext) -> None:
+    """
+    Should not be called. tranfer_to_agent should be used instead. 
+    But if it is, it just calls the transfer to agent function instead.
+    """
+    tool_context.actions.transfer_to_agent = 'test_designer'
+    return "Transfering to test_designer agent..."
+test_designer = FunctionTool(func=fn_test_designer)
 
-
-test_runner = Agent(
+_test_runner = Agent(
     model=LiteLlm(model="openai/gpt-4.1-nano"),
     name="test_runner",
-    description="You are a test runner. You run the tests and report the results and errors. "
-    "You track the growing list of tests and run all previous unit tests.",
+    description="Can be transfered to using transfer_to_agent. You are a test runner agent. You run the tests and report the results and errors. "
+    "You track the growing list of tests and run all previous tests.",
     instruction="You are a test runner. You run the tests and report the results and errors. "
-    "You track the growing list of tests and run all previous unit tests.",
+    "You track the growing list of tests and run all previous tests.",
     tools=[run_python_file, run_tests] + unix_tools,
-    disallow_transfer_to_peers=False,
+    disallow_transfer_to_peers=True,
     disallow_transfer_to_parent=True,
 )
+def fn_test_runner(query:str, tool_context:ToolContext) -> None:
+    """
+    Should not be called. tranfer_to_agent should be used instead. 
+    But if it is, it just calls the transfer to agent function instead.
+    """
+    tool_context.actions.transfer_to_agent = 'test_runner'
+    return "Transfering to test_runner agent..."
+test_runner = FunctionTool(func=fn_test_runner)
 
-
-reviewer = Agent(
+_reviewer = Agent(
     model=LiteLlm(model="openai/gpt-4.1-nano"),
     name="reviewer",
-    description="You are a reviewer. You review the code and suggest improvements if needed. "
+    description="Can be transfered to using transfer_to_agent. You are a reviewer agent. You review the code and suggest improvements if needed. "
     "You sign off on a piece of code and commit it to the codebase.",
     instruction="You are a reviewer. You review the code and suggest improvements if needed. "
     "You sign off on a piece of code and commit it to the codebase.",
     tools=unix_tools,
-    disallow_transfer_to_peers=False,
+    disallow_transfer_to_peers=True,
     disallow_transfer_to_parent=True,
 )
+def fn_reviewer(query:str, tool_context:ToolContext) -> None:
+    """
+    Should not be called. tranfer_to_agent should be used instead. 
+    But if it is, it just calls the transfer to agent function instead.
+    """
+    tool_context.actions.transfer_to_agent = 'reviewer'
+    return "Transfering to reviewer agent..."
+reviewer = FunctionTool(func=fn_reviewer)
+
 
 
 teddy = Agent(
     model=LiteLlm(model="openai/gpt-4.1-nano"),
     name="Teddy",
-    description="You are Teddy, a programming assistant. You follow an iterative code, test, fix, review, repeat process to implement requests. ",
-    instruction="You are a the orchestrator of a programming team that follows an iterative code, test, fix, review loop to implement code. "
-    "In this loop, we implement one feature at a time. Every small function of code you write, you must stop,"
-    "drop in some driver code and test whatever you are writing. You should write unit tests that "
-    "verify its functionality immediately, and append them to a list of growing unit tests that runs after each change. "
-    "This list of tests should be kept in a pytest structure in a directory called tests, ensure that gets done.\n"
-    "Given a user task, it is your job to state your plan out loud and delegate the work to the subagents by means of transfer_to_agent.\n"
-    "Follow the loop of: plan, transfer to specifier to specify, to coder to code, to test_designer to design tests, back to specifier to specify "
-    "the tests, to the coder to wrwite the tests, to the test_runner to run the tests, to the reviewer to review, and repeat.\n"
-    "Whenever you regain control, recount where we are in the process, and what the next step is. Don't skip any steps. \n"
-    "When the task has been completed, say the termination token 'TASK_COMPLETE'."
-    "And remember, transfer to agents is always done via transfer_to_agent, not by calling them directly. ",
+    description="You are Teddy, a programming assistant. You follow an iterative code, test, fix, review, repeat process to implement requests via your team of agents. ",
+    instruction="You are Teddy, the orchestrator of a programming team that follows an iterative code, test, fix, review loop to implement code. "
+        "Your primary goal is to ensure that every user request is implemented correctly, modularly, and with 100% test coverage.\n\n"
+        "Your workflow is as follows:\n"
+        "1. Plan: Break down the user request into smaller, manageable tasks and outline the steps to complete them.\n"
+        "2. Specify: Transfer the task to the 'specifier' agent to generate concrete implementation requirements.\n"
+        "3. Code: Transfer the requirements to the 'coder' agent to write the necessary code.\n"
+        "4. Test Design: Transfer the code to the 'test_designer' agent to create a list of tests that verify its functionality.\n"
+        "5. Test Specification: Transfer the test design to the 'specifier' agent to specify the implementation of the tests.\n"
+        "6. Test Implementation: Transfer the test specifications to the 'coder' agent to write the tests.\n"
+        "7. Test Execution: Transfer the tests to the 'test_runner' agent to execute them and report results.\n"
+        "8. Review: Transfer the code and test results to the 'reviewer' agent to review and suggest improvements.\n"
+        "9. Repeat: Iterate through the loop until the task is complete.\n\n"
+        "Important Notes:\n"
+        "- Always ensure that tests are written in a pytest structure and stored in a directory called 'tests'.\n"
+        "- Maintain a growing list of tests that are executed after each change.\n"
+        "- Whenever you regain control, summarize the current progress and outline the next step.\n"
+        "- Use the termination token 'TASK_COMPLETE' when the task is fully implemented and verified.\n",
+    
     sub_agents=[
-        directory_navigator,
-        specifier,
-        coder,
-        test_designer,
-        test_runner,
-        reviewer,
+        _directory_navigator,
+        _specifier,
+        _coder,
+        _test_designer,
+        _test_runner,
+        _reviewer,
     ],
+
+    tools=[directory_navigator, specifier, coder, test_designer, test_runner, reviewer],
 )
 
 system = LoopAgent(
@@ -201,7 +258,7 @@ async def call_agent_async(query):
 # Main async function to run the examples
 async def main():
     await call_agent_async(
-        "Write a program to calculate the value of (5 + 2) * 2 the quantity factorial using only for loops and addition. Make your code very modular, and have 100% test coverage. Feel free to use more common methods to generate test cases, but the codebase must not use these methods besides for loops and addition. "
+        "Write a program main.py to calculate the value of (1+1) * 2 the quantity factorial using only for loops and addition. Make your code very modular, and have 100% test coverage writing python pytest tests as test_*. Feel free to use more common methods to generate test cases, but the codebase must not use these methods besides for loops and addition. Be careful as factorial takes a long time, so never test with more than 6!"
     )
 
 
