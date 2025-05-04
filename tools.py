@@ -123,14 +123,14 @@ def run_python_file(file_path: str) -> str:
 def run_tests(tests_dir:str) -> str:
     """
     Runs pytest command on the current directory and returns the output or an error message.
-    tests_dir:str - The directory containing the tests to run. Defaults to "tests" if an empty string is passed.
+    tests_dir:str - The directory containing the tests to run. Defaults to current directory if an empty string is passed.
     If the directory does not exist, it runs pytest on the current directory.This is common if the tests are at the root level.
     """
 
     try:
         if not tests_dir:
-            tests_dir = "tests"
-        if os.path.exists(tests_dir):
+            tests_dir = "."
+        if tests_dir != "." and os.path.exists(tests_dir):
             result = subprocess.run(["uv", "run", "pytest", tests_dir], capture_output=True, text=True)
             logging.debug(f"tests/ output: {result.stdout.strip()}")
             return "Output:\n" + result.stdout.strip() + "\nErrors:\n" + result.stderr.strip()
