@@ -34,10 +34,10 @@ _directory_navigator = Agent(
     model=LiteLlm(model="openai/gpt-4.1-nano"),
     name="directory_navigator",
     description="Can be transfered to using transfer_to_agent. You are a directory navigator agent. You manage and answer questions about the directory structure. "
-    "You can create, move, and delete files and directories. You can also read the contents of files.",
+    "You can create, move, and delete files and directories. You can also read the contents of files. Ensure that everything happens at the root directory. ",
     tools=unix_tools,
     instruction="You are a directory navigator agent. You manage and answer questions about the directory structure. "
-    "You can create, move, and delete files and directories. You can also read the contents of files.",
+    "You can create, move, and delete files and directories. You can also read the contents of files. Ensure that everything happens at the root directory. ",
     disallow_transfer_to_peers=True,
     disallow_transfer_to_parent=True,
 )
@@ -49,7 +49,7 @@ def directory_navigator(query: str, tool_context: ToolContext) -> None:
     But if it is, it just calls the transfer to agent function instead.
     """
     tool_context.actions.transfer_to_agent = "directory_navigator"
-    return "Transfering to directory_navigator agent..."
+    return "WARNING: You called the agent as a tool. Don't do this. Use transfer_to_agent.\nTransfering to directory_navigator agent..."
 
 
 directory_navigator = FunctionTool(func=directory_navigator)
@@ -131,7 +131,7 @@ test_designer = FunctionTool(func=test_designer)
 _test_runner = Agent(
     model=LiteLlm(model="openai/gpt-4.1-nano"),
     name="test_runner",
-    description="Can be transfered to using transfer_to_agent. You are a test runner agent. You run the tests and report the results and errors. "
+    description="Can be transfered to using transfer_to_agent. You are a test runner agent. You run the tests and report the results and errors. Can also be used to run a python file."
     "You track the growing list of tests and run all previous tests.",
     instruction="You are a test runner. You run the tests and report the results and errors. Do not attempt to fix the code. Leave that to the other agents."
     "You track the growing list of tests and run all previous tests.",
@@ -195,10 +195,13 @@ teddy = Agent(
     "9. Repeat: Iterate through the loop until the task is complete.\n\n"
     "Important Notes:\n"
     "- Don't do the work yourself. Always transfer tasks to the appropriate agents.\n"
-    "- Always ensure that tests are written in a pytest structure and stored in a directory called 'tests'.\n"
+    "- Always ensure that tests are written in a pytest structure and stored in the root directory such that pytest can detect them and avoiding import issues.\n"
     "- Maintain a growing list of tests that are executed after each change.\n"
     "- Whenever you regain control, summarize the current progress and outline the next step.\n"
-    "- Use the termination token 'TASK_COMPLETE' when the task is fully implemented and verified. If it is, provide a summary of how every stop was followed alongside the termination token.\n",
+    "- Use the termination token 'TASK_COMPLETE' when the task is fully implemented and verified. \n"
+    "- If it is, provide a summary of how every stop was followed alongside the termination token.\n"
+    "- A complete task will have 100% test coverage and be modular.\n"
+    "- Remember to instruct each agent to do a single small step only, so that we can test between each one.\n",
     sub_agents=[
         _directory_navigator,
         _specifier,
@@ -212,7 +215,7 @@ teddy = Agent(
 
 system = LoopAgent(
     name="system",
-    description="Loops Teddy 10 times, and then stops.",
+    description="Loops Teddy 50 times, and then stops.",
     max_iterations=20,
     sub_agents=[teddy],
 )
@@ -241,7 +244,7 @@ async def call_agent_async(query):
                     if part.text and not part.text.isspace():
                         if "TASK_COMPLETE" in part.text:
                             print(
-                                f"[{event.author}]  Debug: Task Complete: {part.text.strip()}"
+                                f"[{event.author}] Debug: Task Complete: {part.text.strip()}"
                             )
                             return
                         print(f"[{event.author}]{part.text.strip()}")
@@ -250,9 +253,14 @@ async def call_agent_async(query):
                             f"[{event.author}]Function response: {part.function_response.name, part.function_response.response}"
                         )
                     elif part.function_call:
-                        print(
-                            f"[{event.author}]Function call: {part.function_call.name, part.function_call.args}"
-                        )
+                        if event.author == "coder":
+                            print(
+                                f"[{event.author}]Function call: {part.function_call.name, part.function_call.args.keys()}"
+                            )
+                        else:
+                            print(
+                                f"[{event.author}]Function call: {part.function_call.name, part.function_call.args}"
+                            )
             if not has_specific_part and event.is_final_response():
                 if (
                     event.content
@@ -263,14 +271,10 @@ async def call_agent_async(query):
                     print(
                         f"[{event.author}]==> Final Agent Response: {final_response_text}"
                     )
-                    if event.author == "Teddy":
-                        break
                 else:
                     print(
                         f"[{event.author}]==> Final Agent Response: [No text content in final event]"
                     )
-                    if event.author == "Teddy":
-                        break
 
     except Exception as e:
         print(f"ERROR during agent run: {e}")
@@ -280,11 +284,11 @@ async def call_agent_async(query):
 # Main async function to run the examples
 async def main():
     # await call_agent_async(
-    #     "Write a program main.py to calculate the value of (1+1) * 2 the quantity factorial using only for loops and addition. Make your code very modular, and have 100% test coverage writing python pytest tests as test_*. Feel free to use more common methods to generate test cases, but the codebase must not use these methods besides for loops and addition. Be careful as factorial takes a long time, so never test with more than 6!"
+    #     "Write a program main.py to calculate the value of (1+1) * 2 the quantity factorial using only for loops and addition. Make your code very modular, and have 100% test coverage writing python pytest tests as test_* in the root directory such that the pytest command will pick them up. Feel free to use more common methods to generate test cases, but the codebase must not use these methods besides for loops and addition. Be careful as factorial takes a long time, so never test with more than 6!"
     # )
     # lets try a more complex example
     task = "Write a program that accepts a stock ticker (default AAPL) and plots its daily closing price history in the terminal as ascii art."
-    task += " Make your code very modular, and have 100% test coverage writing python pytest tests as test_*. If you have import issues, ensure an __init__.py file is present and properly configured. "
+    task += " Make your code very modular, and have 100% test coverage writing python pytest tests as test_* in the root directory such that the pytest command will pick them up. "
     await call_agent_async(task)
 
 

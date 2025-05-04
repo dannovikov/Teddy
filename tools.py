@@ -97,7 +97,7 @@ def run_python_file(file_path: str) -> str:
     try:
         # run the python file and capture the output and return it
         result = subprocess.run(
-            ["python", file_path],
+            ["uv", "run", file_path],
             capture_output=True,
             text=True,
         )
