@@ -2,6 +2,7 @@ import os
 import subprocess
 import logging
 
+
 def read_file(file_path: str) -> str:
     """
     Reads the contents of a file and returns it as a string.
@@ -51,6 +52,7 @@ def ls(path: str) -> str:
     except Exception as e:
         return f"Error: Could not list contents of {path}. {e}"
 
+
 def mv(src: str, dest: str) -> str:
     """
     Moves a file or directory from src to dest and returns a success message.
@@ -62,6 +64,7 @@ def mv(src: str, dest: str) -> str:
         return f"Moved {src} to {dest}"
     except Exception as e:
         return f"Error: Could not move {src} to {dest}. {e}"
+
 
 def pwd() -> str:
     """
@@ -120,7 +123,7 @@ def run_python_file(file_path: str) -> str:
         return f"Error: Could not execute Python file {file_path}. {e}"
 
 
-def run_tests(tests_dir:str) -> str:
+def run_pytest(tests_dir: str) -> str:
     """
     Runs pytest command on the current directory and returns the output or an error message.
     tests_dir:str - The directory containing the tests to run. Defaults to current directory if an empty string is passed.
@@ -131,15 +134,30 @@ def run_tests(tests_dir:str) -> str:
         if not tests_dir:
             tests_dir = "."
         if tests_dir != "." and os.path.exists(tests_dir):
-            result = subprocess.run(["uv", "run", "pytest", tests_dir], capture_output=True, text=True)
+            result = subprocess.run(
+                ["uv", "run", "pytest", tests_dir], capture_output=True, text=True
+            )
             logging.debug(f"tests/ output: {result.stdout.strip()}")
-            return "Output:\n" + result.stdout.strip() + "\nErrors:\n" + result.stderr.strip()
+            return (
+                "Output:\n"
+                + result.stdout.strip()
+                + "\nErrors:\n"
+                + result.stderr.strip()
+            )
         else:
-            result = subprocess.run(["uv", "run", "pytest"], capture_output=True, text=True)
+            result = subprocess.run(
+                ["uv", "run", "pytest"], capture_output=True, text=True
+            )
             logging.debug(f"output: {result.stdout.strip()}")
-            return "Output:\n" + result.stdout.strip() + "\nErrors:\n" + result.stderr.strip()
+            return (
+                "Output:\n"
+                + result.stdout.strip()
+                + "\nErrors:\n"
+                + result.stderr.strip()
+            )
     except Exception as e:
         return f"Error: Could not run tests. {e}"
+
 
 def pip_install(package: str) -> str:
     """
