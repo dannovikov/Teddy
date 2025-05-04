@@ -2,8 +2,7 @@ from google.adk.agents import Agent, LoopAgent
 from google.adk.models.lite_llm import LiteLlm
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
-from google.genai import types
-from pprint import pprint as print
+
 import asyncio
 import logging
 import os
@@ -22,19 +21,8 @@ from tools import (
     run_pytest,
     pip_install,
 )
+from utils import call_agent_async
 
-unix_tools = [
-    cd,
-    ls,
-    mv,
-    pwd,
-    mkdir,
-    touch,
-    read_file,
-    write_file,
-    pip_install,
-    run_python_file,
-]
 
 # Set up the environment
 os.environ["OPENAI_API_KEY"] = get_api_key(0)
@@ -48,6 +36,20 @@ logging.basicConfig(
     filename="teddy.log",
     level=logging.INFO,
 )
+logging.info("Starting Teddy...")
+
+unix_tools = [
+    cd,
+    ls,
+    mv,
+    pwd,
+    mkdir,
+    touch,
+    read_file,
+    write_file,
+    pip_install,
+    run_python_file,
+]
 
 # Define the agents that comprise Teddy's test-driven development process.
 _planner = Agent(
@@ -129,91 +131,31 @@ system = LoopAgent(
 
 # Create a Runner
 session_service = InMemorySessionService()
-session = session_service.create_session(
-    app_name=APP_NAME, user_id=USER_ID, session_id=SESSION_ID
-)
+session = session_service.create_session(app_name=APP_NAME, user_id=USER_ID, session_id=SESSION_ID)
 runner = Runner(agent=system, app_name=APP_NAME, session_service=session_service)
+
 
 async def task():
     task = "build a program that allows me to track my spending by exposing an interface where i can submit new transactions via the command line. These transactions are captured and added to the list of transactions upon which statistics will be calculated and a report will be generated. In testing, generate dummy data and ensure each step of the code works. For persistance, save the transactions in a csv on the hard drive."
     task += " Make your code very modular, and have 100% test coverage writing python pytest tests as test_* in the root directory such that the pytest command will pick them up. Code should never contain input statements, and should be able to run without any user input. "
-    await call_agent_async(task)
+    await call_agent_async(task, runner, USER_ID, SESSION_ID)
 
-# Function that runs the agent and parses and logs its events.
-async def call_agent_async(query):
-    content = types.Content(role="user", parts=[types.Part(text=query)])
-    logging.info(f"Running query: {query}")
-    print(f"\n--- Running Query: {query} ---")
-    final_response_text = "No final text response captured."
+
+if __name__ == "__main__":
     try:
-        async for event in runner.run_async(
-            user_id=USER_ID, session_id=SESSION_ID, new_message=content
-        ):
-            has_specific_part = False
-            if event.content and event.content.parts:
-                for part in event.content.parts:
-                    if part.text and not part.text.isspace():
-                        if "TASK_COMPLETE" in part.text:
-                            logging.info(
-                                f"[{event.author}] Task Complete: {part.text.strip()}"
-                            )
-                            print(
-                                f"[{event.author}] Task Complete: {part.text.strip()}"
-                            )
-                            return
-                        logging.info(f"[{event.author}] {part.text.strip()}")
-                        print(f"[{event.author}]{part.text.strip()}", compact=True)
-                    elif part.function_response:
-                        logging.info(
-                            f"[{event.author}]Function response: {part.function_response.name, part.function_response.response}"
-                        )
-                        print(
-                            f"[{event.author}]Function response: {part.function_response.name, part.function_response.response}"
-                        )
-                    elif part.function_call:
-                        if event.author == "coder":
-                            logging.info(
-                                f"[{event.author}]Function call: {part.function_call.name, part.function_call.args}"
-                            )
-                            print(
-                                f"[{event.author}]Function call: {part.function_call.name, part.function_call.args}"
-                            )
-                        else:
-                            logging.info(
-                                f"[{event.author}]Function call: {part.function_call.name, part.function_call.args}"
-                            )
-                            print(
-                                f"[{event.author}]Function call: {part.function_call.name, part.function_call.args}"
-                            )
-            if not has_specific_part and event.is_final_response():
-                if (
-                    event.content
-                    and event.content.parts
-                    and event.content.parts[0].text
-                ):
-                    final_response_text = event.content.parts[0].text.strip()
-                    logging.info(
-                        f"[{event.author}]==> Final Agent Response: {final_response_text}"
-                    )
-                    print(
-                        f"[{event.author}]==> Final Agent Response: {final_response_text}"
-                    )
-                else:
-                    logging.info(
-                        f"[{event.author}]==> Final Agent Response: [No text content in final event]"
-                    )
-                    print(
-                        f"[{event.author}]==> Final Agent Response: [No text content in final event]"
-                    )
-            logging.info("" * 50)
-            print("-" * 50)
+        # setup - this ini avoids import errors in pytest
+        #  by adding the current directory to the python path
+        with open("pytest.ini", "w") as f:
+            f.write("[pytest]\npythonpath = .\n")
+
+        # run
+        asyncio.run(task())
+
+        # teardown
+        os.remove("pytest.ini")
 
     except Exception as e:
-        logging.error(f"ERROR during agent run: {e}")
-        print(f"ERROR during agent run: {e}")
-    logging.info("-" * 50)
-    print("-" * 50)
-
-
-
-asyncio.run(task())
+        # teardown
+        os.remove("pytest.ini")
+        logging.error(f"ERROR: {e}")
+        raise e

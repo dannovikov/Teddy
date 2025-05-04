@@ -134,27 +134,13 @@ def run_pytest(tests_dir: str) -> str:
         if not tests_dir:
             tests_dir = "."
         if tests_dir != "." and os.path.exists(tests_dir):
-            result = subprocess.run(
-                ["uv", "run", "pytest", tests_dir], capture_output=True, text=True
-            )
+            result = subprocess.run(["uv", "run", "pytest", tests_dir], capture_output=True, text=True)
             logging.debug(f"tests/ output: {result.stdout.strip()}")
-            return (
-                "Output:\n"
-                + result.stdout.strip()
-                + "\nErrors:\n"
-                + result.stderr.strip()
-            )
+            return "Output:\n" + result.stdout.strip() + "\nErrors:\n" + result.stderr.strip()
         else:
-            result = subprocess.run(
-                ["uv", "run", "pytest"], capture_output=True, text=True
-            )
+            result = subprocess.run(["uv", "run", "pytest"], capture_output=True, text=True)
             logging.debug(f"output: {result.stdout.strip()}")
-            return (
-                "Output:\n"
-                + result.stdout.strip()
-                + "\nErrors:\n"
-                + result.stderr.strip()
-            )
+            return "Output:\n" + result.stdout.strip() + "\nErrors:\n" + result.stderr.strip()
     except Exception as e:
         return f"Error: Could not run tests. {e}"
 
