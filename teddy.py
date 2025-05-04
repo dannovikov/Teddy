@@ -1,8 +1,5 @@
 from google.adk.agents import Agent, LoopAgent
 from google.adk.models.lite_llm import LiteLlm
-from google.adk.runners import Runner
-from google.adk.sessions import InMemorySessionService
-
 import asyncio
 import logging
 import os
@@ -129,16 +126,10 @@ system = LoopAgent(
 )
 
 
-# Create a Runner
-session_service = InMemorySessionService()
-session = session_service.create_session(app_name=APP_NAME, user_id=USER_ID, session_id=SESSION_ID)
-runner = Runner(agent=system, app_name=APP_NAME, session_service=session_service)
-
-
 async def task():
     task = "build a program that allows me to track my spending by exposing an interface where i can submit new transactions via the command line. These transactions are captured and added to the list of transactions upon which statistics will be calculated and a report will be generated. In testing, generate dummy data and ensure each step of the code works. For persistance, save the transactions in a csv on the hard drive."
     task += " Make your code very modular, and have 100% test coverage writing python pytest tests as test_* in the root directory such that the pytest command will pick them up. Code should never contain input statements, and should be able to run without any user input. "
-    await call_agent_async(task, runner, USER_ID, SESSION_ID)
+    await call_agent_async(task, APP_NAME, USER_ID, SESSION_ID)
 
 
 if __name__ == "__main__":

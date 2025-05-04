@@ -1,10 +1,17 @@
+from google.adk.runners import Runner
+from google.adk.sessions import InMemorySessionService
 from google.genai import types
 from pprint import pprint as print
 import logging
 
 
 # Function that runs the agent and parses and logs its events.
-async def call_agent_async(query, runner, user_id, session_id):
+async def call_agent_async(query, agent, app_name, user_id, session_id):
+    # Create a Runner
+    session_service = InMemorySessionService()
+    session_service.create_session(app_name=app_name, user_id=user_id, session_id=session_id)
+    runner = Runner(agent=agent, app_name=app_name, session_service=session_service)
+
     content = types.Content(role="user", parts=[types.Part(text=query)])
     logging.info(f"Running query: {query}")
     print(f"\n--- Running Query: {query} ---")
