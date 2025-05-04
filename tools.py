@@ -129,74 +129,16 @@ def run_tests(tests_dir:str) -> str:
             return "Output:\n" + result.stdout.strip() + "\nErrors:\n" + result.stderr.strip()
     except Exception as e:
         return f"Error: Could not run tests. {e}"
-"""
 
-Creating the Tool¶
-Define your generator function and wrap it using the LongRunningFunctionTool class:
-
-
-from google.adk.tools import LongRunningFunctionTool
-
-# Define your generator function (see example below)
-def my_long_task_generator(*args, **kwargs):
-    # ... setup ...
-    yield {"status": "pending", "message": "Starting task..."} # Framework sends this as FunctionResponse
-    # ... perform work incrementally ...
-    yield {"status": "pending", "progress": 50}               # Framework sends this as FunctionResponse
-    # ... finish work ...
-    return {"status": "completed", "result": "Final outcome"} # Framework sends this as final FunctionResponse
-
-# Wrap the function
-my_tool = LongRunningFunctionTool(func=my_long_task_generator)
-Intermediate Updates¶
-Yielding structured Python objects (like dictionaries) is crucial for providing meaningful updates. Include keys like:
-
-status: e.g., "pending", "running", "waiting_for_input"
-
-progress: e.g., percentage, steps completed
-
-message: Descriptive text for the user/LLM
-
-estimated_completion_time: If calculable
------------------
-
-
-Using the above documentation, lets define this pytest run as a long running function tool.
-I want to expose underlying process's output to the user, so they can see the progress of the tests as they run.
-"""
-
-
-def _run_tests():
+def pip_install(package: str) -> str:
     """
-    Runs all test files in the current directory and returns the output or an error message.
+    Installs a Python package using pip and returns the output or an error message.
     """
-    if not os.path.exists("tests"):
-        yield "Error: The tests directory does not exist."
-        return
-    if not os.path.isdir("tests"):
-        yield "Error: The tests path is not a directory."
-        return
-
     try:
-        # run pytest in such a way as to stream the output back out here asynchronously
-        # and yield each line of output as a separate message
-        process = subprocess.Popen(
-            ["uv", "run", "pytest", "tests"],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-        )
-        while True:
-            output = process.stdout.readline()
-            if output == "" and process.poll() is not None:
-                break
-            if output:
-                yield {"status": "running", "message": output.strip()}
-        rc = process.poll()
-        if rc == 0:
-            yield {"status": "completed", "result": "All tests passed."}
+        result = subprocess.run(["uv", "add", package], capture_output=True, text=True)
+        if result.returncode == 0:
+            return f"Package {package} installed successfully."
         else:
-            yield {"status": "failed", "result": f"Tests failed with return code {rc}."}
+            return f"Error: {result.stderr.strip()}"
     except Exception as e:
-        yield {"status": "error", "message": f"Error: Could not run tests. {e}"}
-
+        return f"Error: Could not install package {package}. {e}"

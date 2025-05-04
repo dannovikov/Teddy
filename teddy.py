@@ -14,6 +14,7 @@ from tools import (
     touch,
     run_python_file,
     run_tests,
+    pip_install
 )
 import asyncio
 from pprint import pprint as print
@@ -28,7 +29,7 @@ SESSION_ID = "1"
 
 os.environ["OPENAI_API_KEY"] = get_api_key(0)
 
-unix_tools = [cd, ls, pwd, mkdir, touch, read_file, write_file]
+unix_tools = [cd, ls, pwd, mkdir, touch, read_file, write_file, pip_install]
 _directory_navigator = Agent(
     model=LiteLlm(model="openai/gpt-4.1-nano"),
     name="directory_navigator",
@@ -40,14 +41,14 @@ _directory_navigator = Agent(
     disallow_transfer_to_peers=True,
     disallow_transfer_to_parent=True,
 )
-def fn_directory_navigator(query:str, tool_context:ToolContext) -> None:
+def directory_navigator(query:str, tool_context:ToolContext) -> None:
     """
     Should not be called. tranfer_to_agent should be used instead. 
     But if it is, it just calls the transfer to agent function instead.
     """
     tool_context.actions.transfer_to_agent = 'directory_navigator'
     return "Transfering to directory_navigator agent..."
-directory_navigator = FunctionTool(func=fn_directory_navigator)
+directory_navigator = FunctionTool(func=directory_navigator)
 
 
 
@@ -61,14 +62,14 @@ _specifier = Agent(
     disallow_transfer_to_peers=True,
     disallow_transfer_to_parent=True,
 )
-def fn_specifier(query:str, tool_context:ToolContext) -> None:
+def specifier(query:str, tool_context:ToolContext) -> None:
     """
     Should not be called. tranfer_to_agent should be used instead. 
     But if it is, it just calls the transfer to agent function instead.
     """
     tool_context.actions.transfer_to_agent = 'specifier'
     return "Transfering to specifier agent..."
-specifier = FunctionTool(func=fn_specifier)
+specifier = FunctionTool(func=specifier)
 
 _coder = Agent(
     model=LiteLlm(model="openai/gpt-4.1-nano"),
@@ -87,14 +88,14 @@ _coder = Agent(
     disallow_transfer_to_peers=True,
     disallow_transfer_to_parent=True,
 )
-def fn_coder(query:str, tool_context:ToolContext) -> None:
+def coder(query:str, tool_context:ToolContext) -> None:
     """
     Should not be called. tranfer_to_agent should be used instead. 
     But if it is, it just calls the transfer to agent function instead.
     """
     tool_context.actions.transfer_to_agent = 'coder'
     return "Transfering to coder agent..."
-coder = FunctionTool(func=fn_coder)
+coder = FunctionTool(func=coder)
 
 _test_designer = Agent(
     model=LiteLlm(model="openai/gpt-4.1-nano"),
@@ -102,39 +103,39 @@ _test_designer = Agent(
     description="Can be transfered to using transfer_to_agent. You are a test designer agent. You take a piece of code and design a list of tests that verify its functionality. "
     "You leave the implementation details to the specifier and coder. Ensure these tests get written to a file by coder.",
     instruction="You are a test designer. You take a piece of code and design a list of tests that verify its functionality. "
-    "You leave the implementation details to the specifier and coder.",
+    "You leave the implementation details to the specifier and coder. Do not attempt to write the code. Specify the tests and leave that to the other agents.",
     tools=unix_tools,
     disallow_transfer_to_peers=True,
     disallow_transfer_to_parent=True,
 )
-def fn_test_designer(query:str, tool_context:ToolContext) -> None:
+def test_designer(query:str, tool_context:ToolContext) -> None:
     """
     Should not be called. tranfer_to_agent should be used instead. 
     But if it is, it just calls the transfer to agent function instead.
     """
     tool_context.actions.transfer_to_agent = 'test_designer'
     return "Transfering to test_designer agent..."
-test_designer = FunctionTool(func=fn_test_designer)
+test_designer = FunctionTool(func=test_designer)
 
 _test_runner = Agent(
     model=LiteLlm(model="openai/gpt-4.1-nano"),
     name="test_runner",
     description="Can be transfered to using transfer_to_agent. You are a test runner agent. You run the tests and report the results and errors. "
     "You track the growing list of tests and run all previous tests.",
-    instruction="You are a test runner. You run the tests and report the results and errors. "
+    instruction="You are a test runner. You run the tests and report the results and errors. Do not attempt to fix the code. Leave that to the other agents."
     "You track the growing list of tests and run all previous tests.",
     tools=[run_python_file, run_tests] + unix_tools,
     disallow_transfer_to_peers=True,
     disallow_transfer_to_parent=True,
 )
-def fn_test_runner(query:str, tool_context:ToolContext) -> None:
+def test_runner(query:str, tool_context:ToolContext) -> None:
     """
     Should not be called. tranfer_to_agent should be used instead. 
     But if it is, it just calls the transfer to agent function instead.
     """
     tool_context.actions.transfer_to_agent = 'test_runner'
     return "Transfering to test_runner agent..."
-test_runner = FunctionTool(func=fn_test_runner)
+test_runner = FunctionTool(func=test_runner)
 
 _reviewer = Agent(
     model=LiteLlm(model="openai/gpt-4.1-nano"),
@@ -147,14 +148,14 @@ _reviewer = Agent(
     disallow_transfer_to_peers=True,
     disallow_transfer_to_parent=True,
 )
-def fn_reviewer(query:str, tool_context:ToolContext) -> None:
+def reviewer(query:str, tool_context:ToolContext) -> None:
     """
     Should not be called. tranfer_to_agent should be used instead. 
     But if it is, it just calls the transfer to agent function instead.
     """
     tool_context.actions.transfer_to_agent = 'reviewer'
     return "Transfering to reviewer agent..."
-reviewer = FunctionTool(func=fn_reviewer)
+reviewer = FunctionTool(func=reviewer)
 
 
 
@@ -178,7 +179,7 @@ teddy = Agent(
         "- Always ensure that tests are written in a pytest structure and stored in a directory called 'tests'.\n"
         "- Maintain a growing list of tests that are executed after each change.\n"
         "- Whenever you regain control, summarize the current progress and outline the next step.\n"
-        "- Use the termination token 'TASK_COMPLETE' when the task is fully implemented and verified.\n",
+        "- Use the termination token 'TASK_COMPLETE' when the task is fully implemented and verified, or if user input is required. But please make sure its really required before asking for user input.\n",
     
     sub_agents=[
         _directory_navigator,
@@ -195,7 +196,7 @@ teddy = Agent(
 system = LoopAgent(
     name="system",
     description="Loops Teddy 10 times, and then stops.",
-    max_iterations=10,
+    max_iterations=20,
     sub_agents=[teddy],
 )
 
@@ -245,10 +246,14 @@ async def call_agent_async(query):
                     print(
                         f"[{event.author}]==> Final Agent Response: {final_response_text}"
                     )
+                    if event.author == "Teddy":
+                        break
                 else:
                     print(
                         f"[{event.author}]==> Final Agent Response: [No text content in final event]"
                     )
+                    if event.author == "Teddy":
+                        break
 
     except Exception as e:
         print(f"ERROR during agent run: {e}")
@@ -257,9 +262,12 @@ async def call_agent_async(query):
 
 # Main async function to run the examples
 async def main():
-    await call_agent_async(
-        "Write a program main.py to calculate the value of (1+1) * 2 the quantity factorial using only for loops and addition. Make your code very modular, and have 100% test coverage writing python pytest tests as test_*. Feel free to use more common methods to generate test cases, but the codebase must not use these methods besides for loops and addition. Be careful as factorial takes a long time, so never test with more than 6!"
-    )
-
+    # await call_agent_async(
+    #     "Write a program main.py to calculate the value of (1+1) * 2 the quantity factorial using only for loops and addition. Make your code very modular, and have 100% test coverage writing python pytest tests as test_*. Feel free to use more common methods to generate test cases, but the codebase must not use these methods besides for loops and addition. Be careful as factorial takes a long time, so never test with more than 6!"
+    # )
+    #lets try a more complex example
+    task = "Write a program that accepts a stock ticker (default AAPL) and plots its daily closing price history in the terminal as ascii art."
+    task += " Make your code very modular, and have 100% test coverage writing python pytest tests as test_*. If you have import issues, ensure an __init__.py file is present and properly configured. "
+    await call_agent_async(task)
 
 asyncio.run(main())
