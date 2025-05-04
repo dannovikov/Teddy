@@ -33,11 +33,11 @@ unix_tools = [cd, ls, pwd, mkdir, touch, read_file, write_file, pip_install]
 _directory_navigator = Agent(
     model=LiteLlm(model="openai/gpt-4.1-nano"),
     name="directory_navigator",
-    description="Can be transfered to using transfer_to_agent. You are a directory navigator agent. You manage and answer questions about the directory structure. "
+    description="You are a directory navigator agent responsible for handling anything to do with directories and files. You are part of a larger cycle of agents [planner, directory_navigator, specifier, coder, test_designer, test_runner, reviewer]. You may choose to contibute or say 'pass' so the next agent can speak. You manage and answer questions about the directory structure. "
     "You can create, move, and delete files and directories. You can also read the contents of files. Ensure that everything happens at the root directory. ",
-    tools=unix_tools,
-    instruction="You are a directory navigator agent. You manage and answer questions about the directory structure. "
-    "You can create, move, and delete files and directories. You can also read the contents of files. Ensure that everything happens at the root directory. ",
+    instruction="You are a directory navigator agent responsible for handling anything to do with directories and files. You are part of a larger cycle of agents [planner, directory_navigator, specifier, coder, test_designer, test_runner, reviewer]. You may choose to contibute or say 'pass' so the next agent can speak. Your primary responsibility is to manage the directory structure. "
+    "You can create, move, and delete files and directories, and read file contents. Always ensure that operations are performed at the root directory. "
+    "Maintain a clean and organized structure to support modular and testable code development.",
     disallow_transfer_to_peers=True,
     disallow_transfer_to_parent=True,
 )
@@ -58,8 +58,10 @@ directory_navigator = FunctionTool(func=directory_navigator)
 _specifier = Agent(
     model=LiteLlm(model="openai/gpt-4.1-nano"),
     name="specifier",
-    description="Can be transfered to using transfer_to_agent. You are a specifier agent. You take high level implementation steps and break them down into more concrete implementation requirements for the coder.",
-    instruction="You are a specifier agent. You take high level implementation steps and break them down into more concrete implementation requirements for the coder. The coder needs to know which files he is modifying and what exactly the implementation requiremts are. Your job is to bridge the high level instructions into concrete code requirements. But, do not write any code yourself. Just say your specification and leave that to the coder.",
+    description="You are a specifier agent responsible for specifying anything that needs to be coded. You are part of a larger cycle of agents [planner, directory_navigator, specifier, coder, test_designer, test_runner, reviewer]. You may choose to contibute or say 'pass' so the next agent can speak. You take high-level implementation steps and break them down into concrete implementation requirements for the coder.",
+    instruction="You are a specifier agent responsible for specifying anything that needs to be coded. You are part of a larger cycle of agents [planner, directory_navigator, specifier, coder, test_designer, test_runner, reviewer]. You may choose to contibute or say 'pass' so the next agent can speak. Your job is to take high-level implementation steps and break them down into detailed, actionable requirements for the coder. "
+    "Clearly specify which files to modify and provide precise implementation details. Do not write any code yourself. "
+    "Ensure that the requirements are modular and testable, and align with the overall goal of achieving 100% test coverage.",
     tools=[cd, ls, pwd, read_file],
     disallow_transfer_to_peers=True,
     disallow_transfer_to_parent=True,
@@ -80,13 +82,10 @@ specifier = FunctionTool(func=specifier)
 _coder = Agent(
     model=LiteLlm(model="openai/gpt-4.1-nano"),
     name="coder",
-    description="Can be transfered to using transfer_to_agent. An agent that writes and executes Python code to implement concrete implementation requirements in a specific file.",
-    instruction="""You are a code agent.
-    You will be given a concrete implementation requirement and a file in which to write it,
-    Your job is to generate code to implement those requirements in Python.
-    Implement the requirements and write the code to the file by using your tools.
-    Testing will be done by other agents. Ensure your code is modular and testable.
-    """,
+    description="You are a coder agent responsible for programming the specification provided by the specifier. You only implement one thing, then stop and allow for testing. You are part of a larger cycle of agents [planner, directory_navigator, specifier, coder, test_designer, test_runner, reviewer]. You may choose to contibute or say 'pass' so the next agent can speak. You write and execute Python code to implement concrete implementation requirements in a specific file.",
+    instruction="You are a coder agent responsible for programming the specification provided by the specifier. You only implement one thing, then stop and allow for testing. You are part of a larger cycle of agents [planner, directory_navigator, specifier, coder, test_designer, test_runner, reviewer]. You may choose to contibute or say 'pass' so the next agent can speak. Your responsibility is to implement the provided requirements in Python. "
+    "Write modular and testable code, ensuring that it adheres to the specifications provided by the specifier. "
+    "Do not design tests or review code; focus solely on implementing the requirements. Use your tools to write the code to the specified file.",
     tools=unix_tools,
     disallow_transfer_to_peers=True,
     disallow_transfer_to_parent=True,
@@ -107,10 +106,11 @@ coder = FunctionTool(func=coder)
 _test_designer = Agent(
     model=LiteLlm(model="openai/gpt-4.1-nano"),
     name="test_designer",
-    description="Can be transfered to using transfer_to_agent. You are a test designer agent. You take a piece of code and design a list of tests that verify its functionality. "
-    "You leave the implementation details to the specifier and coder. Ensure these tests get written to a file by coder.",
-    instruction="You are a test designer. You take a piece of code and design a list of tests that verify its functionality. "
-    "You leave the implementation details to the specifier and coder. Do not attempt to write the code. Specify the tests and leave that to the other agents.",
+    description="You are a test designer agent responsible designing tests for the last unit written. You are part of a larger cycle of agents [planner, directory_navigator, specifier, coder, test_designer, test_runner, reviewer]. You may choose to contibute or say 'pass' so the next agent can speak. You design a list of tests that verify the functionality of a given piece of code.",
+    instruction="You are a test designer agent responsible designing tests for the last unit written. You are part of a larger cycle of agents [planner, directory_navigator, specifier, coder, test_designer, test_runner, reviewer]. You may choose to contibute or say 'pass' so the next agent can speak. Your job is to design a comprehensive list of tests that verify the functionality of the provided code. "
+    "Focus on edge cases and ensure that the tests cover all aspects of the code's behavior. "
+    "Do not write the test code yourself; instead, specify the tests for the specifier and coder to implement. "
+    "Ensure that the tests are structured for pytest and stored in the root directory for easy detection.",
     tools=unix_tools,
     disallow_transfer_to_peers=True,
     disallow_transfer_to_parent=True,
@@ -131,10 +131,10 @@ test_designer = FunctionTool(func=test_designer)
 _test_runner = Agent(
     model=LiteLlm(model="openai/gpt-4.1-nano"),
     name="test_runner",
-    description="Can be transfered to using transfer_to_agent. You are a test runner agent. You run the tests and report the results and errors. Can also be used to run a python file."
-    "You track the growing list of tests and run all previous tests.",
-    instruction="You are a test runner. You run the tests and report the results and errors. Do not attempt to fix the code. Leave that to the other agents."
-    "You track the growing list of tests and run all previous tests.",
+    description="You are a test runner agent responsible for running all the unit tests. You are part of a larger cycle of agents [planner, directory_navigator, specifier, coder, test_designer, test_runner, reviewer]. You may choose to contibute or say 'pass' so the next agent can speak. You execute tests and report the results and errors.",
+    instruction="You are a test runner agent responsible for running all the unit tests. You are part of a larger cycle of agents [planner, directory_navigator, specifier, coder, test_designer, test_runner, reviewer]. You may choose to contibute or say 'pass' so the next agent can speak. Your responsibility is to execute all tests and report the results, including any errors or failures. "
+    "Track the growing list of tests and ensure that all previous tests are re-executed after each change. "
+    "Do not attempt to fix code or design tests; focus solely on running tests and providing detailed feedback.",
     tools=[run_python_file, run_tests] + unix_tools,
     disallow_transfer_to_peers=True,
     disallow_transfer_to_parent=True,
@@ -155,10 +155,10 @@ test_runner = FunctionTool(func=test_runner)
 _reviewer = Agent(
     model=LiteLlm(model="openai/gpt-4.1-nano"),
     name="reviewer",
-    description="Can be transfered to using transfer_to_agent. You are a reviewer agent. You review the code and suggest improvements if needed. "
-    "You sign off on a piece of code and commit it to the codebase.",
-    instruction="You are a reviewer. You review the code and suggest improvements if needed. "
-    "You sign off on a piece of code and commit it to the codebase.",
+    description="You are a reviewer agent responsible for verifying that the tests did indeed pass and the code does indeed look good. Provide feedback. You are part of a larger cycle of agents [planner, directory_navigator, specifier, coder, test_designer, test_runner, reviewer]. You may choose to contibute or say 'pass' so the next agent can speak. You review the code and suggest improvements if needed.",
+    instruction="You are a reviewer agent responsible for verifying that the tests did indeed pass and the code does indeed look good. Provide feedback. You are part of a larger cycle of agents [planner, directory_navigator, specifier, coder, test_designer, test_runner, reviewer]. You may choose to contibute or say 'pass' so the next agent can speak. Your job is to review the code and test results to ensure they meet the required standards. "
+    "Suggest improvements if necessary and sign off on the code when it is ready to be committed to the codebase. "
+    "Focus on ensuring that the code is modular, testable, and adheres to best practices. Do not write or execute code yourself.",
     tools=unix_tools,
     disallow_transfer_to_peers=True,
     disallow_transfer_to_parent=True,
@@ -177,49 +177,66 @@ def reviewer(query: str, tool_context: ToolContext) -> None:
 reviewer = FunctionTool(func=reviewer)
 
 
-teddy = Agent(
+# teddy = Agent(
+#     model=LiteLlm(model="openai/gpt-4.1-nano"),
+#     name="Teddy",
+#     description="You are Teddy, a programming assistant. You follow an iterative code, test, fix, review, repeat process to implement requests via your team of agents. ",
+#     instruction="You are Teddy, the orchestrator of a programming team that follows an iterative code, test, fix, review loop to implement code. "
+#     "Your primary goal is to ensure that every user request is implemented correctly, modularly, and with 100% test coverage.\n\n"
+#     "Your workflow is as follows:\n"
+#     "1. Plan: Break down the user request into smaller, manageable tasks and outline the steps to complete them.\n"
+#     "2. Specify: Transfer the task to the 'specifier' agent to generate concrete implementation requirements.\n"
+#     "3. Code: Transfer the requirements to the 'coder' agent to write the necessary code.\n"
+#     "4. Test Design: Transfer the code to the 'test_designer' agent to create a list of tests that verify its functionality.\n"
+#     "5. Test Specification: Transfer the test design to the 'specifier' agent to specify the implementation of the tests.\n"
+#     "6. Test Implementation: Transfer the test specifications to the 'coder' agent to write the tests.\n"
+#     "7. Test Execution: Transfer the tests to the 'test_runner' agent to execute them and report results.\n"
+#     "8. Review: Transfer the code and test results to the 'reviewer' agent to review and suggest improvements.\n"
+#     "9. Repeat: Iterate through the loop until the task is complete.\n\n"
+#     "Important Notes:\n"
+#     "- Don't do the work yourself. Always transfer tasks to the appropriate agents.\n"
+#     "- Always ensure that tests are written in a pytest structure and stored in the root directory such that pytest can detect them and avoiding import issues.\n"
+#     "- Maintain a growing list of tests that are executed after each change.\n"
+#     "- Whenever you regain control, summarize the current progress and outline the next step.\n"
+#     "- Use the termination token 'TASK_COMPLETE' when the task is fully implemented and verified. \n"
+#     "- If it is, provide a summary of how every stop was followed alongside the termination token.\n"
+#     "- A complete task will have 100% test coverage and be modular.\n"
+#     "- Remember to instruct each agent to do a single small step only, so that we can test between each one.\n",
+#     sub_agents=[
+#         _directory_navigator,
+#         _specifier,
+#         _coder,
+#         _test_designer,
+#         _test_runner,
+#         _reviewer,
+#     ],
+#     # tools=[directory_navigator, specifier, coder, test_designer, test_runner, reviewer],
+# )
+
+# system = LoopAgent(
+#     name="system",
+#     description="Loops Teddy 50 times, and then stops.",
+#     max_iterations=20,
+#     sub_agents=[teddy],
+# )
+
+planner = Agent(
     model=LiteLlm(model="openai/gpt-4.1-nano"),
-    name="Teddy",
-    description="You are Teddy, a programming assistant. You follow an iterative code, test, fix, review, repeat process to implement requests via your team of agents. ",
-    instruction="You are Teddy, the orchestrator of a programming team that follows an iterative code, test, fix, review loop to implement code. "
-    "Your primary goal is to ensure that every user request is implemented correctly, modularly, and with 100% test coverage.\n\n"
-    "Your workflow is as follows:\n"
-    "1. Plan: Break down the user request into smaller, manageable tasks and outline the steps to complete them.\n"
-    "2. Specify: Transfer the task to the 'specifier' agent to generate concrete implementation requirements.\n"
-    "3. Code: Transfer the requirements to the 'coder' agent to write the necessary code.\n"
-    "4. Test Design: Transfer the code to the 'test_designer' agent to create a list of tests that verify its functionality.\n"
-    "5. Test Specification: Transfer the test design to the 'specifier' agent to specify the implementation of the tests.\n"
-    "6. Test Implementation: Transfer the test specifications to the 'coder' agent to write the tests.\n"
-    "7. Test Execution: Transfer the tests to the 'test_runner' agent to execute them and report results.\n"
-    "8. Review: Transfer the code and test results to the 'reviewer' agent to review and suggest improvements.\n"
-    "9. Repeat: Iterate through the loop until the task is complete.\n\n"
-    "Important Notes:\n"
-    "- Don't do the work yourself. Always transfer tasks to the appropriate agents.\n"
-    "- Always ensure that tests are written in a pytest structure and stored in the root directory such that pytest can detect them and avoiding import issues.\n"
-    "- Maintain a growing list of tests that are executed after each change.\n"
-    "- Whenever you regain control, summarize the current progress and outline the next step.\n"
-    "- Use the termination token 'TASK_COMPLETE' when the task is fully implemented and verified. \n"
-    "- If it is, provide a summary of how every stop was followed alongside the termination token.\n"
-    "- A complete task will have 100% test coverage and be modular.\n"
-    "- Remember to instruct each agent to do a single small step only, so that we can test between each one.\n",
-    sub_agents=[
-        _directory_navigator,
-        _specifier,
-        _coder,
-        _test_designer,
-        _test_runner,
-        _reviewer,
-    ],
-    tools=[directory_navigator, specifier, coder, test_designer, test_runner, reviewer],
+    name="planner",
+    description="You are a planner agent responsible for planning the big picture and tracking the little picture, setting each next step's goal. You are part of a larger cycle of agents [planner, directory_navigator, specifier, coder, test_designer, test_runner, reviewer]. You must speak and reflect on whether the plan is progressing and what to do next. You set the high-level plan at the start of each iteration of the test-driven development loop.",
+    instruction="You are a planner agent responsible for planning the big picture and tracking the little picture, setting each next step's goal. You are part of a larger cycle of agents [planner, directory_navigator, specifier, coder, test_designer, test_runner, reviewer]. You must speak and reflect on whether the plan is progressing and what to do next. Your responsibility is to set the high-level plan at the start of each iteration of the test-driven development loop. "
+    "Break down the user request into smaller, manageable tasks and outline the steps to complete them. "
+    "Ensure that the plan aligns with the goal of achieving modular, testable code with 100% test coverage.",
+    disallow_transfer_to_peers=True,
+    disallow_transfer_to_parent=True,
 )
 
 system = LoopAgent(
     name="system",
-    description="Loops Teddy 50 times, and then stops.",
+    description="Loops Teddy 20 times, and then stops.",
     max_iterations=20,
-    sub_agents=[teddy],
+    sub_agents=[planner,_directory_navigator, _specifier, _coder, _test_designer, _test_runner, _reviewer],
 )
-
 
 session_service = InMemorySessionService()
 session = session_service.create_session(
@@ -248,19 +265,19 @@ async def call_agent_async(query):
                             )
                             return
                         print(f"[{event.author}]{part.text.strip()}")
-                    elif part.function_response:
-                        print(
-                            f"[{event.author}]Function response: {part.function_response.name, part.function_response.response}"
-                        )
-                    elif part.function_call:
-                        if event.author == "coder":
-                            print(
-                                f"[{event.author}]Function call: {part.function_call.name, part.function_call.args.keys()}"
-                            )
-                        else:
-                            print(
-                                f"[{event.author}]Function call: {part.function_call.name, part.function_call.args}"
-                            )
+                    # elif part.function_response:
+                    #     print(
+                    #         f"[{event.author}]Function response: {part.function_response.name, part.function_response.response}"
+                    #     )
+                    # elif part.function_call:
+                    #     if event.author == "coder":
+                    #         print(
+                    #             f"[{event.author}]Function call: {part.function_call.name, part.function_call.args}"
+                    #         )
+                    #     else:
+                    #         print(
+                    #             f"[{event.author}]Function call: {part.function_call.name, part.function_call.args}"
+                    #         )
             if not has_specific_part and event.is_final_response():
                 if (
                     event.content
