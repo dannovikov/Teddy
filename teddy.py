@@ -14,7 +14,7 @@ from tools import (
     touch,
     run_python_file,
     run_tests,
-    pip_install
+    pip_install,
 )
 import asyncio
 from pprint import pprint as print
@@ -41,16 +41,18 @@ _directory_navigator = Agent(
     disallow_transfer_to_peers=True,
     disallow_transfer_to_parent=True,
 )
-def directory_navigator(query:str, tool_context:ToolContext) -> None:
+
+
+def directory_navigator(query: str, tool_context: ToolContext) -> None:
     """
-    Should not be called. tranfer_to_agent should be used instead. 
+    Should not be called. tranfer_to_agent should be used instead.
     But if it is, it just calls the transfer to agent function instead.
     """
-    tool_context.actions.transfer_to_agent = 'directory_navigator'
+    tool_context.actions.transfer_to_agent = "directory_navigator"
     return "Transfering to directory_navigator agent..."
+
+
 directory_navigator = FunctionTool(func=directory_navigator)
-
-
 
 
 _specifier = Agent(
@@ -62,13 +64,17 @@ _specifier = Agent(
     disallow_transfer_to_peers=True,
     disallow_transfer_to_parent=True,
 )
-def specifier(query:str, tool_context:ToolContext) -> None:
+
+
+def specifier(query: str, tool_context: ToolContext) -> None:
     """
-    Should not be called. tranfer_to_agent should be used instead. 
+    Should not be called. tranfer_to_agent should be used instead.
     But if it is, it just calls the transfer to agent function instead.
     """
-    tool_context.actions.transfer_to_agent = 'specifier'
+    tool_context.actions.transfer_to_agent = "specifier"
     return "Transfering to specifier agent..."
+
+
 specifier = FunctionTool(func=specifier)
 
 _coder = Agent(
@@ -78,23 +84,24 @@ _coder = Agent(
     instruction="""You are a code agent.
     You will be given a concrete implementation requirement and a file in which to write it,
     Your job is to generate code to implement those requirements in Python.
-    You have the following tools at your disposal:
-    - read_file(file): a tool that allows you to read the contents of a file.
-    - write_file(file, content): a tool that allows you to write content to a file.
-    You will use the first tool to read the relevent file mentioned in the requirement,
-    and the second tool to write the code to that file. Implement the requirements and write the code to the file, by telling each agent what needs to be done.
+    Implement the requirements and write the code to the file by using your tools.
+    Testing will be done by other agents. Ensure your code is modular and testable.
     """,
     tools=unix_tools,
     disallow_transfer_to_peers=True,
     disallow_transfer_to_parent=True,
 )
-def coder(query:str, tool_context:ToolContext) -> None:
+
+
+def coder(query: str, tool_context: ToolContext) -> None:
     """
-    Should not be called. tranfer_to_agent should be used instead. 
+    Should not be called. tranfer_to_agent should be used instead.
     But if it is, it just calls the transfer to agent function instead.
     """
-    tool_context.actions.transfer_to_agent = 'coder'
+    tool_context.actions.transfer_to_agent = "coder"
     return "Transfering to coder agent..."
+
+
 coder = FunctionTool(func=coder)
 
 _test_designer = Agent(
@@ -108,13 +115,17 @@ _test_designer = Agent(
     disallow_transfer_to_peers=True,
     disallow_transfer_to_parent=True,
 )
-def test_designer(query:str, tool_context:ToolContext) -> None:
+
+
+def test_designer(query: str, tool_context: ToolContext) -> None:
     """
-    Should not be called. tranfer_to_agent should be used instead. 
+    Should not be called. tranfer_to_agent should be used instead.
     But if it is, it just calls the transfer to agent function instead.
     """
-    tool_context.actions.transfer_to_agent = 'test_designer'
+    tool_context.actions.transfer_to_agent = "test_designer"
     return "Transfering to test_designer agent..."
+
+
 test_designer = FunctionTool(func=test_designer)
 
 _test_runner = Agent(
@@ -128,13 +139,17 @@ _test_runner = Agent(
     disallow_transfer_to_peers=True,
     disallow_transfer_to_parent=True,
 )
-def test_runner(query:str, tool_context:ToolContext) -> None:
+
+
+def test_runner(query: str, tool_context: ToolContext) -> None:
     """
-    Should not be called. tranfer_to_agent should be used instead. 
+    Should not be called. tranfer_to_agent should be used instead.
     But if it is, it just calls the transfer to agent function instead.
     """
-    tool_context.actions.transfer_to_agent = 'test_runner'
+    tool_context.actions.transfer_to_agent = "test_runner"
     return "Transfering to test_runner agent..."
+
+
 test_runner = FunctionTool(func=test_runner)
 
 _reviewer = Agent(
@@ -148,15 +163,18 @@ _reviewer = Agent(
     disallow_transfer_to_peers=True,
     disallow_transfer_to_parent=True,
 )
-def reviewer(query:str, tool_context:ToolContext) -> None:
+
+
+def reviewer(query: str, tool_context: ToolContext) -> None:
     """
-    Should not be called. tranfer_to_agent should be used instead. 
+    Should not be called. tranfer_to_agent should be used instead.
     But if it is, it just calls the transfer to agent function instead.
     """
-    tool_context.actions.transfer_to_agent = 'reviewer'
+    tool_context.actions.transfer_to_agent = "reviewer"
     return "Transfering to reviewer agent..."
-reviewer = FunctionTool(func=reviewer)
 
+
+reviewer = FunctionTool(func=reviewer)
 
 
 teddy = Agent(
@@ -164,23 +182,23 @@ teddy = Agent(
     name="Teddy",
     description="You are Teddy, a programming assistant. You follow an iterative code, test, fix, review, repeat process to implement requests via your team of agents. ",
     instruction="You are Teddy, the orchestrator of a programming team that follows an iterative code, test, fix, review loop to implement code. "
-        "Your primary goal is to ensure that every user request is implemented correctly, modularly, and with 100% test coverage.\n\n"
-        "Your workflow is as follows:\n"
-        "1. Plan: Break down the user request into smaller, manageable tasks and outline the steps to complete them.\n"
-        "2. Specify: Transfer the task to the 'specifier' agent to generate concrete implementation requirements.\n"
-        "3. Code: Transfer the requirements to the 'coder' agent to write the necessary code.\n"
-        "4. Test Design: Transfer the code to the 'test_designer' agent to create a list of tests that verify its functionality.\n"
-        "5. Test Specification: Transfer the test design to the 'specifier' agent to specify the implementation of the tests.\n"
-        "6. Test Implementation: Transfer the test specifications to the 'coder' agent to write the tests.\n"
-        "7. Test Execution: Transfer the tests to the 'test_runner' agent to execute them and report results.\n"
-        "8. Review: Transfer the code and test results to the 'reviewer' agent to review and suggest improvements.\n"
-        "9. Repeat: Iterate through the loop until the task is complete.\n\n"
-        "Important Notes:\n"
-        "- Always ensure that tests are written in a pytest structure and stored in a directory called 'tests'.\n"
-        "- Maintain a growing list of tests that are executed after each change.\n"
-        "- Whenever you regain control, summarize the current progress and outline the next step.\n"
-        "- Use the termination token 'TASK_COMPLETE' when the task is fully implemented and verified, or if user input is required. But please make sure its really required before asking for user input.\n",
-    
+    "Your primary goal is to ensure that every user request is implemented correctly, modularly, and with 100% test coverage.\n\n"
+    "Your workflow is as follows:\n"
+    "1. Plan: Break down the user request into smaller, manageable tasks and outline the steps to complete them.\n"
+    "2. Specify: Transfer the task to the 'specifier' agent to generate concrete implementation requirements.\n"
+    "3. Code: Transfer the requirements to the 'coder' agent to write the necessary code.\n"
+    "4. Test Design: Transfer the code to the 'test_designer' agent to create a list of tests that verify its functionality.\n"
+    "5. Test Specification: Transfer the test design to the 'specifier' agent to specify the implementation of the tests.\n"
+    "6. Test Implementation: Transfer the test specifications to the 'coder' agent to write the tests.\n"
+    "7. Test Execution: Transfer the tests to the 'test_runner' agent to execute them and report results.\n"
+    "8. Review: Transfer the code and test results to the 'reviewer' agent to review and suggest improvements.\n"
+    "9. Repeat: Iterate through the loop until the task is complete.\n\n"
+    "Important Notes:\n"
+    "- Don't do the work yourself. Always transfer tasks to the appropriate agents.\n"
+    "- Always ensure that tests are written in a pytest structure and stored in a directory called 'tests'.\n"
+    "- Maintain a growing list of tests that are executed after each change.\n"
+    "- Whenever you regain control, summarize the current progress and outline the next step.\n"
+    "- Use the termination token 'TASK_COMPLETE' when the task is fully implemented and verified. If it is, provide a summary of how every stop was followed alongside the termination token.\n",
     sub_agents=[
         _directory_navigator,
         _specifier,
@@ -189,7 +207,6 @@ teddy = Agent(
         _test_runner,
         _reviewer,
     ],
-
     tools=[directory_navigator, specifier, coder, test_designer, test_runner, reviewer],
 )
 
@@ -265,9 +282,10 @@ async def main():
     # await call_agent_async(
     #     "Write a program main.py to calculate the value of (1+1) * 2 the quantity factorial using only for loops and addition. Make your code very modular, and have 100% test coverage writing python pytest tests as test_*. Feel free to use more common methods to generate test cases, but the codebase must not use these methods besides for loops and addition. Be careful as factorial takes a long time, so never test with more than 6!"
     # )
-    #lets try a more complex example
+    # lets try a more complex example
     task = "Write a program that accepts a stock ticker (default AAPL) and plots its daily closing price history in the terminal as ascii art."
     task += " Make your code very modular, and have 100% test coverage writing python pytest tests as test_*. If you have import issues, ensure an __init__.py file is present and properly configured. "
     await call_agent_async(task)
+
 
 asyncio.run(main())
