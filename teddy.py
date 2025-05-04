@@ -52,9 +52,9 @@ unix_tools = [
 _planner = Agent(
     model=LiteLlm(model="openai/gpt-4.1-nano"),
     name="planner",
-    description="You are a planner agent responsible for planning the big picture and tracking the little picture of the test-driven development process, setting each next step's goal. You are part of a larger cycle of agents [planner, specifier, coder, test_designer, test_runner, reviewer]. In this process, the specifier details the implementation for one small step, the coder writes it, the test_designer writes tests immediately and teh test_runner runs them, the reviewer provides feedback. Through this cycle, we implement the plan. You must speak and reflect on whether the plan is progressing and what to do next. You set the high-level plan at the start of each iteration of the test-driven development loop.",
-    instruction="You are the head of a chain of agents (planner - issues tasks, specifier-specifies requirements, coder-codes, test_designer-designs tests, test_runner-writes and runs tests). Remember, one feature, one unit test. Steps should be given one step at a time. Define and track the plan. Where are we, and what's the concrete next step in this interative test-driven development process? \n"
-    "Occasionally, the system gets stuck, and the agents keep passing the baton without making progress. BREAK THESE LOOPS by issuing a new task.\n "
+    description="You are a planner agent responsible for planning the big picture and tracking the little picture of the test-driven development process, setting each next step's goal. You are part of a larger cycle of agents [planner, specifier, coder, tester, reviewer]. In this process, the specifier details the implementation for one small step, the coder writes it, the tester writes tests immediately and runs them, the reviewer provides feedback. Through this cycle, we implement the plan. You must speak and reflect on whether the plan is progressing and what to do next. You set the high-level plan at the start of each iteration of the test-driven development loop.",
+    instruction="Do not ask any questions. Give orders and keep the process moving. Start by asking each of the agents to introduce themselves and what they do. You are the head of a chain of agents (planner - issues tasks, specifier-specifies requirements, coder-codes-designs tests, tester-writes and runs tests). Remember, direct one unit of code at a time, and one unit test. Steps should be given one step at a time. Define and track the plan. Where are we, and what's the concrete next step in this interative test-driven development process? \n"
+    "Occasionally, the system gets stuck, and the agents keep passing the baton, telling you to proceed, without making progress. BREAK THESE LOOPS by issuing a new task.\n "
     "Lastly, once the user's task is completely fulfilled, issue the termination token 'TASK_COMPLETE'. ",
     disallow_transfer_to_peers=True,
     disallow_transfer_to_parent=True,
@@ -63,10 +63,10 @@ _planner = Agent(
 _specifier = Agent(
     model=LiteLlm(model="openai/gpt-4.1-nano"),
     name="specifier",
-    description="You are a specifier agent responsible for specifying how the current unit of planned code needs to be implemented, so that the coder has unambiguous instructions. You are part of a larger cycle of agents [planner, specifier, coder, test_designer, test_runner, reviewer]. You take high-level implementation steps and break them down into concrete implementation requirements for a single unit of code for the coder.",
-    instruction="You are a specifier agent responsible for specifying how the current unit of planned code needs to be implemented, so that the coder has unambiguous instructions. You are part of a larger cycle of agents [planner, specifier, coder, test_designer, test_runner, reviewer]. Your job is to take high-level implementation steps and break them down into detailed, actionable requirements for a single unit of code for the coder. "
+    description="You are a specifier agent responsible for specifying how the current unit of planned code needs to be implemented, so that the coder has unambiguous instructions. You are part of a larger cycle of agents [planner, specifier, coder, tester, reviewer]. You take high-level implementation steps and break them down into concrete implementation requirements for a single unit of code for the coder.",
+    instruction="You are a specifier agent responsible for specifying how the current unit of planned code needs to be implemented, so that the coder has unambiguous instructions. You are part of a larger cycle of agents [planner, specifier, coder, tester, reviewer]. Your job is to take high-level implementation steps and break them down into detailed, actionable requirements for a single unit of code for the coder. "
     "Clearly specify which files to modify and provide precise implementation details. Do not write any code yourself. "
-    "Ensure that the requirements are modular and testable, and align with the overall goal of achieving 100% test coverage.",
+    "Ensure that the requirements are modular and testable, and that you are specifying only one unit of code at a time. ",
     disallow_transfer_to_peers=True,
     disallow_transfer_to_parent=True,
 )
@@ -74,8 +74,8 @@ _specifier = Agent(
 _coder = Agent(
     model=LiteLlm(model="openai/gpt-4.1-nano"),
     name="coder",
-    description="You are a coder agent responsible for programming the specification provided by the specifier. You only implement one thing, then stop and allow for testing. You are part of a larger cycle of agents [planner, specifier, coder, test_designer, test_runner, reviewer]. You write and execute Python code to implement concrete implementation requirements in a specific file.",
-    instruction="You are a coder agent responsible for programming the specification provided by the specifier. You only implement one thing, then stop and allow for testing. You are part of a larger cycle of agents [planner, specifier, coder, test_designer, test_runner, reviewer]. Your responsibility is to implement the provided requirements in Python. "
+    description="You are a coder agent responsible for programming the specification provided by the specifier. You only implement one thing, then stop and allow for testing. You are part of a larger cycle of agents [planner, specifier, coder, tester, reviewer]. You write and execute Python code to implement concrete implementation requirements in a specific file.",
+    instruction="You are a coder agent responsible for programming the specification provided by the specifier. You only implement one thing, then stop and allow for testing. You are part of a larger cycle of agents [planner, specifier, coder, tester, reviewer]. Your responsibility is to implement the provided requirements in Python. "
     "Write modular and testable code, ensuring that it adheres to the specifications provided by the specifier. "
     "Do not design tests or review code; focus solely on implementing the requirements. Use your tools to write the code to the specified file.",
     tools=unix_tools,
@@ -83,23 +83,12 @@ _coder = Agent(
     disallow_transfer_to_parent=True,
 )
 
-_test_designer = Agent(
+_tester = Agent(
     model=LiteLlm(model="openai/gpt-4.1-nano"),
-    name="test_designer",
-    description="You are a test designer agent responsible designing tests for the last unit written. You are part of a larger cycle of agents [planner, specifier, coder, test_designer, test_runner, reviewer]. You design a list of tests that verify the functionality of a given piece of code.",
-    instruction="What kind of tests do we need to write for the last unit of code?",
-    tools=unix_tools,
-    disallow_transfer_to_peers=True,
-    disallow_transfer_to_parent=True,
-)
-
-_test_runner = Agent(
-    model=LiteLlm(model="openai/gpt-4.1-nano"),
-    name="test_runner",
-    description="You are a test runner agent responsible for running all the unit tests. You are part of a larger cycle of agents [planner, specifier, coder, test_designer, test_runner, reviewer]. You execute tests and report the results and errors.",
-    instruction="You are a test runner agent responsible for running all the unit tests. You are part of a larger cycle of agents [planner, specifier, coder, test_designer, test_runner, reviewer]. Your responsibility is to execute all tests and report the results, including any errors or failures. "
-    "Track the growing list of tests and ensure that all previous tests are re-executed after each change. "
-    "Do not attempt to fix code or design tests; focus solely on running tests and providing detailed feedback.",
+    name="tester",
+    description="You are a tester agent responsible for both designing and running unit tests for the last unit of code written. You are part of a larger cycle of agents [planner, specifier, coder, tester, reviewer]. Your job is to first design a list of tests that verify the functionality of a given piece of code, write them to a file, and then execute those tests to ensure they pass.",
+    instruction="You are a tester agent responsible for both designing and running unit tests for the last unit of code written. First, design a list of tests that verify the functionality of the given piece of code, and write them to a file. Then, execute those tests using the run_pytest function and report the results, including any errors or failures. "
+    "Do not attempt to fix code; focus solely on designing and running tests and providing detailed feedback.",
     tools=[run_pytest] + unix_tools,
     disallow_transfer_to_peers=True,
     disallow_transfer_to_parent=True,
@@ -108,10 +97,10 @@ _test_runner = Agent(
 _reviewer = Agent(
     model=LiteLlm(model="openai/gpt-4.1-nano"),
     name="reviewer",
-    # description="You are a reviewer agent responsible for verifying that the tests did indeed pass and the code does indeed look good. Provide feedback. You are part of a larger cycle of agents [planner, specifier, coder, test_designer, test_runner, reviewer]. You review the code and suggest improvements if needed.",
+    # description="You are a reviewer agent responsible for verifying that the tests did indeed pass and the code does indeed look good. Provide feedback. You are part of a larger cycle of agents [planner, specifier, coder, tester, reviewer]. You review the code and suggest improvements if needed.",
     description="You are a reviewer agent responsible for verifying that the tests did indeed pass and the code does indeed look good. Provide feedback. "
     "Focus on ensuring that the code is modular, testable, and adheres to best practices. Do not write or execute code yourself.",
-    instruction="You are a reviewer agent responsible for verifying that the tests did indeed pass and the code does indeed look good. Provide feedback. You are part of a larger cycle of agents [planner, specifier, coder, test_designer, test_runner, reviewer]. Your job is to review the code and test results to ensure they meet the required standards. Make sure a unit test was written for the current code and that it passed. If not, say so and insist that the planner makes the next cycle about creating a test for the last code. "
+    instruction="You are a reviewer agent responsible for verifying that the tests did indeed pass and the code does indeed look good. Provide feedback. You are part of a larger cycle of agents [planner, specifier, coder, tester, reviewer]. Your job is to review the code and test results to ensure they meet the required standards. Make sure a unit test was written for the current code and that it passed. If not, say so and insist that the planner makes the next cycle about creating a test for the last code. "
     "Suggest improvements if necessary and sign off on the code when it is ready to be committed to the codebase. "
     "Summarize how each step of the test-driven development process was successful. "
     "Focus on ensuring that the code is modular, testable, and adheres to best practices. Do not write or execute code yourself.",
@@ -124,7 +113,7 @@ system = LoopAgent(
     name="system",
     description="Loops Teddy 20 times, and then stops.",
     max_iterations=20,
-    sub_agents=[_planner, _specifier, _coder, _test_designer, _test_runner, _reviewer],
+    sub_agents=[_planner, _specifier, _coder, _tester, _reviewer],
 )
 
 
