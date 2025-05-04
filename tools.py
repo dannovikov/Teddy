@@ -51,6 +51,17 @@ def ls(path: str) -> str:
     except Exception as e:
         return f"Error: Could not list contents of {path}. {e}"
 
+def mv(src: str, dest: str) -> str:
+    """
+    Moves a file or directory from src to dest and returns a success message.
+    """
+    if not os.path.exists(src):
+        return f"Error: The source {src} does not exist."
+    try:
+        os.rename(src, dest)
+        return f"Moved {src} to {dest}"
+    except Exception as e:
+        return f"Error: Could not move {src} to {dest}. {e}"
 
 def pwd() -> str:
     """
