@@ -129,7 +129,7 @@ system = LoopAgent(
 async def task():
     task = "build a program that allows me to track my spending by exposing an interface where i can submit new transactions via the command line. These transactions are captured and added to the list of transactions upon which statistics will be calculated and a report will be generated. In testing, generate dummy data and ensure each step of the code works. For persistance, save the transactions in a csv on the hard drive."
     task += " Make your code very modular, and have 100% test coverage writing python pytest tests as test_* in the root directory such that the pytest command will pick them up. Code should never contain input statements, and should be able to run without any user input. "
-    await call_agent_async(task, APP_NAME, USER_ID, SESSION_ID)
+    await call_agent_async(task, system, APP_NAME, USER_ID, SESSION_ID)
 
 
 if __name__ == "__main__":
