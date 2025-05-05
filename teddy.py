@@ -160,27 +160,72 @@ _reviewer = Agent(
     disallow_transfer_to_parent=True,
 )
 
+# _aligner = Agent(
+#     model=LiteLlm(model="openai/gpt-4.1-nano"),
+#     name="aligner",
+#     description="You are an aligner agent responsible for breaking the loop of agents that "
+#     "are stuck in a cycle. You are part of a larger cycle of agents [planner, specifier, coder, tester, reviewer]. "
+#     "Your job is to identify when the agents are stuck and issue a new task to break the loop.",
+#     instruction="Be brief. You are an aligner agent responsible for breaking the loop of agents "
+#     "that are stuck in a cycle. Your job is to identify when the agents are stuck and let everyone know really "
+#     "loudly. If you detect that the agents are not making progress, passing the batton, saying they will "
+#     "do thing but not, then say in all caps, 'GUYS, YOU ARE STUCK IN A LOOP. PLANNER, ISSUE A NEW TASK TO A SPECIFIC AGENT.' "
+#     "Do not write or execute code yourself; focus solely on breaking the loop. If there is no loop, "
+#     "say `Continue` and nothing else. Don't let the agents ask eachother to run specific files or "
+#     "commands repeatedly, that's a loop. If they say 'please let me know' a lot, then that's a loop. "
+#     "If the coder is speaking but not coding, say 'Coder, stop talking and code.'\n"
+#     "If there's a lot of talking and not a lot of tool use, say 'Guys, you are stuck in a loop. Planner, issue a new task to a specific agent.'\n"
+#     "If any of the agents expect the user to do something or run something, say 'Guys, the user is not available to do anything. You have the tools to do it yourself.'\n"
+#     "If any of the agents are saying 'I will do this' or 'Once this happens, I'll...' but not actually doing it, say 'Guys, stop passing it off and actually do the thing.'\n"
+#     "If the agents are asking any question at all, say 'Guys, stop asking questions and just do the thing.'\n",
+#     disallow_transfer_to_peers=True,
+#     disallow_transfer_to_parent=True,
+# )
+
+
 _aligner = Agent(
     model=LiteLlm(model="openai/gpt-4.1-nano"),
     name="aligner",
-    description="You are an aligner agent responsible for breaking the loop of agents that "
-    "are stuck in a cycle. You are part of a larger cycle of agents [planner, specifier, coder, tester, reviewer]. "
-    "Your job is to identify when the agents are stuck and issue a new task to break the loop.",
-    instruction="Be brief. You are an aligner agent responsible for breaking the loop of agents "
-    "that are stuck in a cycle. Your job is to identify when the agents are stuck and let everyone know really "
-    "loudly. If you detect that the agents are not making progress, passing the batton, saying they will "
-    "do thing but not, then say in all caps, 'GUYS, YOU ARE STUCK IN A LOOP. PLANNER, ISSUE A NEW TASK TO A SPECIFIC AGENT.' "
-    "Do not write or execute code yourself; focus solely on breaking the loop. If there is no loop, "
-    "say `Continue` and nothing else. Don't let the agents ask eachother to run specific files or "
-    "commands repeatedly, that's a loop. If they say 'please let me know' a lot, then that's a loop. "
-    "If the coder is speaking but not coding, say 'Coder, stop talking and code.'\n"
-    "If there's a lot of talking and not a lot of tool use, say 'Guys, you are stuck in a loop. Planner, issue a new task to a specific agent.'\n"
-    "If any of the agents expect the user to do something or run something, say 'Guys, the user is not available to do anything. You have the tools to do it yourself.'\n"
-    "If any of the agents are saying 'I will do this' or 'Once this happens, I'll...' but not actually doing it, say 'Guys, stop passing it off and actually do the thing.'\n"
-    "If the agents are asking any question at all, say 'Guys, stop asking questions and just do the thing.'\n",
+    description="Your job is get the system unstuck by telling agent's what they are stuck on and break them out of it.",
+    instruction="""If agents are not making progress (e.g., passing tasks without action or repeating themselves),
+                    then say:
+                    "GUYS, YOU ARE STUCK IN A LOOP. PLANNER, ISSUE A NEW TASK TO A SPECIFIC AGENT."
+
+                    If agents repeatedly ask each other to run specific files or commands,
+                    then say:
+                    "GUYS, YOU ARE STUCK IN A LOOP. PLANNER, ISSUE A NEW TASK TO A SPECIFIC AGENT."
+
+                    If agents frequently say "please let me know,"
+                    then say:
+                    "GUYS, YOU ARE STUCK IN A LOOP. PLANNER, ISSUE A NEW TASK TO A SPECIFIC AGENT."
+
+                    If the coder is talking but not coding,
+                    then say:
+                    "Coder, stop talking and code."
+
+                    If there is excessive talking and not enough tool usage,
+                    then say:
+                    "GUYS, YOU ARE STUCK IN A LOOP. PLANNER, ISSUE A NEW TASK TO A SPECIFIC AGENT."
+
+                    If agents expect the user to perform an action or run something,
+                    then say:
+                    "Guys, the user is not available to do anything. You have the tools to do it yourself."
+
+                    If agents say "I will do this" or "Once this happens, I'll..." but don’t act,
+                    then say:
+                    "Guys, stop passing it off and actually do the thing."
+
+                    If agents are asking any question at all,
+                    then say:
+                    "Guys, stop asking questions and just do the thing."
+
+                    If no loop is detected,
+                    then say:
+                    Continue and nothing else.""",
     disallow_transfer_to_peers=True,
     disallow_transfer_to_parent=True,
 )
+
 
 system = LoopAgent(
     name="system",
@@ -193,7 +238,7 @@ system = LoopAgent(
 async def task():
 
     task = "Write a program that fetches accepts a stock ticker and returns a formatted text "
-    "report of import metrics for investing in the stock, including volatility, volume, price, "
+    "report of important metrics for investing in the stock, including volatility, volume, price, "
     "moving averages, rsi, short float, etc. It doesn't need a gui. Just a python program is fine."
 
     task += " Make your code very modular, and pytest testable. Code should never contain input statements, and should always run without any user input. "
