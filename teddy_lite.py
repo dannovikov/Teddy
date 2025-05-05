@@ -66,8 +66,8 @@ _planner = Agent(
     description="You plan and track the test-driven development process.",
     instruction=(
         "Write a global plan and then track each next step in the test-driven development process. "
-        "Give clear, actionable tasks, but don't do any work. Leave it to the other agents. "
-        "If every aspect of the user's request has been implemented, read the code and the tests again. Verify coverage. Then, pytest again, if it passes, say 'TASK_COMPLETE.'"
+        "Give clear, actionable instructions, always leaving the work to the other agents. "
+        "The termination token is 'TASK_COMPLETE.'"
     ),
     disallow_transfer_to_peers=True,
     disallow_transfer_to_parent=True,
@@ -132,7 +132,7 @@ async def task():
     "and gives the weather along the road trip route between those locations. "
     "First, it should get the route from google maps. Then, it should collect locations at one hour intervals along the route. "
     "Then, it should get the weather for each of those locations. Finally, it should print the hour and the weather for each location. "
-    task += " Make your code very modular, and pytest testable with complete code coverage. At least 3 tests. Code should never contain input statements, and should always run without any user input. "
+    task += " Make your code very modular, and pytest testable with complete code coverage. At least 3 tests. Code should never contain input statements, no GUIs, no servers or other blocking code. It should always run without any user input. "
     await call_agent_async(task, system, APP_NAME, USER_ID, SESSION_ID)
 
 

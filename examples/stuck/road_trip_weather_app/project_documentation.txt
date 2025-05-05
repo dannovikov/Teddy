@@ -1,0 +1,14 @@
+Distance Calculation Module
+
+Implemented a Python module 'toy_distance_module.py' providing a function 'haversine_distance' to calculate the great-circle distance between two geographic points using the Haversine formula.
+
+The module includes validation for typical geographic coordinates and is thoroughly tested.
+
+Test coverage includes:
+- Zero distance (same point)
+- Known distance between New York City and Chicago
+- Antipodal points representing maximum possible distance on Earth
+
+All tests have passed successfully, ensuring the correctness of the implementation.
+
+This setup is now ready for deployment or further integration into larger systems.
